@@ -1,0 +1,17 @@
+{
+  "name": "procyon",
+  "version": "1.0.0",
+  "description": "network utilities",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "yojiro kondo",
+  "license": "MIT",
+  "dependencies": {
+    "co": "^4.6.0",
+    "element-ui": "^1.4.2",
+    "ping": "^0.2.2",
+    "vue": "^2.4.2"
+  }
+}
