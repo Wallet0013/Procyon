@@ -9,9 +9,17 @@
   "author": "yojiro kondo",
   "license": "MIT",
   "dependencies": {
+    "axios": "^0.16.2",
     "co": "^4.6.0",
     "element-ui": "^1.4.2",
+    "ip": "^1.1.5",
+    "moment": "^2.18.1",
+    "mongodb": "^2.2.31",
+    "node-ssh": "^4.2.3",
+    "node-vagrant": "^1.1.0",
+    "os": "^0.1.1",
     "ping": "^0.2.2",
+    "ssh2": "^0.5.5",
     "vue": "^2.4.2"
   }
 }

@@ -2,19 +2,94 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Hello World!</title>
+    <title>Procyon</title>
     <link rel="stylesheet" href="./node_modules/element-ui/lib/theme-default/index.css">
-  </head>
-  <body>
     <script src="./node_modules/vue/dist/vue.js"></script>
     <script src="./node_modules/element-ui/lib/index.js"></script>
-    <h1>Hello World!</h1>
+  </head>
+  <body>
+    <div id=topNav>
+      <el-menu theme="dark" :default-active="activeIndex" class="el-menu-demo" mode="horizontal" @select="handleSelect">
+        <el-menu-item index="1">Processing Center</el-menu-item>
+        <el-submenu index="2">
+          <template slot="title">Workspace</template>
+          <el-menu-item index="2-1">item one</el-menu-item>
+        </el-submenu>
+        <el-menu-item index="3"><a href="" target="_blank">Orders</a></el-menu-item>
+      </el-menu>
+    </div>
+
+    <h1>Procyon</h1>
+    <div id="nodeTool">
+      <el-input placeholder="IP : 192.168.1.1/24" v-model="nodeIP"> </el-input>
+      <el-input placeholder="Gateway : 192.168.1.1" v-model="nodeGateway"> </el-input>
+      <el-button type="primary" @click="bootNode">BootNode</el-button>
+      <el-button type="primary" @click="setAddress">SetIP</el-button>
+      <el-button type="info" @click="getVersion">GetVersion</el-button>
+      <el-button type="danger" @click="deleteNode">DeleteNode</el-button>
+    </div>
+    <hr>
+    <div id="nodeAdd" ef="form" :model="form" >
+      <el-form>
+        <el-form-item label="VLAN">
+         <el-input placeholder="VLAN : 100" v-model="form.vlan"> </el-input>
+        </el-form-item>
+        <el-form-item>
+         <el-input placeholder="Network : 192.168.1.0/24" v-model="form.IPaddr"> </el-input>
+        </el-form-item>
+        <el-form-item>
+         <el-input placeholder="IP Range : 192.168.1.0/24" v-model="form.IPrange"> </el-input>
+        </el-form-item>
+        <el-form-item>
+          <el-input placeholder="Gateway : 192.168.1.254" v-model="form.gateway"> </el-input>
+        </el-form-item>
+        <el-form-item>
+          <el-input placeholder="Exclude : 192.168.1.1" v-model="form.exclude"> </el-input>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="addApp">Add</el-button>
+          <el-button>Cancel</el-button>
+        </el-form-item>
+      </el-form>
+    </div>
+    <div id="containerTable">
+      <el-button type="danger" @click="flushContainer()">Flush App</el-button>
+      <template>
+        <el-table
+          :data="containerData"
+          border
+          style="width: 100%">
+          <el-table-column prop="name" label="name" width="180"></el-table-column>
+          <el-table-column prop="service_ip" label="service_ip"></el-table-column>
+          <el-table-column prop="management_ip" label="management_ip"></el-table-column>
+          <el-table-column prop="network" label="network "></el-table-column>
+          <el-table-column prop="vlan" label="vlan "></el-table-column>
+          <el-table-column
+            fixed="right"
+            label="Operations"
+            width="120">
+            <template scope="scope">
+              <el-button @click="startPing(scope.$index, containerData)" type="primary" size="small">ping</el-button>
+              <el-button @click="deleteContainer(scope.$index, containerData)" type="danger" size="small">delete</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </template>
+    </div>
+
+<!--     <div id="resultBox" >
+        <template>
+          <el-table :data="tableData" style="width: 100%" >
+            <el-table-column prop="date" label="Date" width="180"></el-table-column>
+            <el-table-column prop="time" label="time" width="180"><i class="el-icon-edit"></i></el-table-column>
+            <el-table-column prop="alive" label="alive" width="180"><i class="el-icon-edit"></i></el-table-column>
+            <el-table-column prop="host" label="host" width="180"></el-table-column>
+            <el-table-column prop="ip" label="ip" width="180"></el-table-column>
+            <el-table-column prop="output" label="output"></el-table-column>
+          </el-table>
+        </template>
+    </div>
+ -->
   </body>
-  <div id="pingBox">
-    <el-input placeholder="Please input" v-model="input" text="aa aaa"></el-input>
-    <el-button type="primary" v-on:click="ping()">Ping</el-button>
-  </div>
-
-
-  <script src="./vue/index.js"></script>
+<script src="./vue/index.js"></script>
 </html>
