@@ -41,10 +41,14 @@ module.exports = {
 				const result = yield db.collection("networks").find({ip:value}).toArray();
 				yield db.close();
 				// console.log(result.length);
+				// console.log(result);
 				if(result.length == 1){
 					resolve(result[0].network_id);
+				} else if (result == null){
+					resolve("00000");
 				} else{
 					reject("error the network too many or not found");
+
 				}
 
 
@@ -85,7 +89,7 @@ module.exports = {
 		return new Promise(function (resolve,reject){
 			co(function* () {
 				const db = yield MongoClient.connect(url);
-				console.log(name);
+				// console.log(name);
 				const result = yield db.collection("networks").find({network_name:name}).toArray();
 
 				yield db.close();
@@ -102,11 +106,27 @@ module.exports = {
 		return new Promise(function (resolve,reject){
 			co(function* () {
 				const db = yield MongoClient.connect(url);
-				console.log(name);
+				// console.log(name);
 				const result = yield db.collection("networks").find({network_name:name}).toArray();
 
 				yield db.close();
 				resolve(result[0].vlan);
+
+			}).catch(function(err){
+				process.on('unhandledRejection', console.log(err));
+			});
+
+		});
+	},
+	// get docker name from service ip
+	getDockerName : function getDockerName(ip) {
+		return new Promise(function (resolve,reject){
+			co(function* () {
+				const db = yield MongoClient.connect(url);
+
+				const result = yield db.collection("container").find({service_ip:ip}).toArray();
+				yield db.close();
+				resolve(result[0].docker_name);
 
 			}).catch(function(err){
 				process.on('unhandledRejection', console.log(err));
@@ -179,7 +199,7 @@ module.exports = {
 			co(function* () {
 				const db = yield MongoClient.connect(url);
 
-				const result = yield db.collection("container").remove({docker_name:value.name});
+				const result = yield db.collection("container").remove({docker_name:value});
 				yield db.close();
 
 
@@ -197,7 +217,7 @@ module.exports = {
 				const db = yield MongoClient.connect(url);
 
 				const result = yield db.collection("container").remove();
-				console.log("removed");
+				console.log("all datas is removed in container collection");
 				yield db.close();
 
 

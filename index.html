@@ -19,59 +19,113 @@
       </el-menu>
     </div>
 
-    <h1>Procyon</h1>
     <div id="nodeTool">
-      <el-input placeholder="IP : 192.168.1.1/24" v-model="nodeIP"> </el-input>
-      <el-input placeholder="Gateway : 192.168.1.1" v-model="nodeGateway"> </el-input>
-      <el-button type="primary" @click="bootNode">BootNode</el-button>
-      <el-button type="primary" @click="setAddress">SetIP</el-button>
-      <el-button type="info" @click="getVersion">GetVersion</el-button>
-      <el-button type="danger" @click="deleteNode">DeleteNode</el-button>
+      <h2> Procyon Node Utilities </h2>
+      <el-form label-width="80px">
+        <el-form-item label="Node IP">
+          <el-input placeholder="IP : 192.168.1.1/24" v-model="nodeIP"> </el-input>
+        </el-form-item>
+        <el-form-item label="Gateway">
+          <el-input placeholder="Gateway : 192.168.1.1" v-model="nodeGateway"> </el-input>
+        </el-form-item>
+        <el-button type="primary" @click="bootNode">BootNode</el-button>
+        <el-button type="primary" @click="setAddress">SetIP</el-button>
+        <el-button type="info" @click="getVersion">GetVersion</el-button>
+        <el-button type="danger" @click="deleteNode">DeleteNode</el-button>
+      </el-form>
     </div>
     <hr>
     <div id="nodeAdd" ef="form" :model="form" >
-      <el-form>
+      <h2>App Utilities</h2>
+      <el-form label-width="80px">
         <el-form-item label="VLAN">
          <el-input placeholder="VLAN : 100" v-model="form.vlan"> </el-input>
         </el-form-item>
-        <el-form-item>
+        <el-form-item  label="Network">
          <el-input placeholder="Network : 192.168.1.0/24" v-model="form.IPaddr"> </el-input>
         </el-form-item>
-        <el-form-item>
+        <el-form-item  label="IP Range">
          <el-input placeholder="IP Range : 192.168.1.0/24" v-model="form.IPrange"> </el-input>
         </el-form-item>
-        <el-form-item>
+        <el-form-item label="Gateway">
           <el-input placeholder="Gateway : 192.168.1.254" v-model="form.gateway"> </el-input>
         </el-form-item>
-        <el-form-item>
+        <el-form-item label="Exclude IP">
           <el-input placeholder="Exclude : 192.168.1.1" v-model="form.exclude"> </el-input>
+        </el-form-item>
+        <el-form-item label="Destnation">
+          <el-input placeholder="dest : 192.168.1.1" v-model="form.dest"> </el-input>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="addApp">Add</el-button>
-          <el-button>Cancel</el-button>
         </el-form-item>
       </el-form>
     </div>
     <div id="containerTable">
       <el-button type="danger" @click="flushContainer()">Flush App</el-button>
+      <el-button type="danger" @click="flushArptable()">Flush ArpTable</el-button>
+      <el-form :inline="true" :model="reqConf">
+        <el-form-item label="Timeout">
+          <el-input v-model="reqConf.timeout" placeholder="1000 (msec)"></el-input>
+        </el-form-item>
+        <el-form-item label="Interval">
+          <el-input v-model="reqConf.interval" placeholder="1000 (msec)"></el-input>
+        </el-form-item>
+        <el-form-item label="PacketSize">
+          <el-input v-model="reqConf.packetsize" placeholder="54"></el-input>
+        </el-form-item>
+        <el-form-item label="hop">
+          <el-input v-model="reqConf.hop" placeholder="10"></el-input>
+        </el-form-item>
+      </el-form>
+    </div>
+    <el-row id="ResultArea" >
+      <el-col :span="6" v-for="(item, index) in AppData" :key="item" :offset="1">
+        <el-card :body-style="{ padding: '20px' }">
+          <el-form :label-position="labelPosition">
+            <el-form-item label="Management IP">
+              <el-input size="small" :disabled="true" v-model="item.management_ip"></el-input>
+            </el-form-item>
+            <el-form-item label="Service IP">
+              <el-input size="small" :disabled="true" v-model="item.service_ip"></el-input>
+            </el-form-item>
+            <el-form-item label="Vlan">
+              <el-input size="small" :disabled="true" v-model="item.vlan"></el-input>
+            </el-form-item>
+            <el-form-item label="Network">
+              <el-input size="small" :disabled="true" v-model="item.network"></el-input>
+            </el-form-item>
+            <el-form-item label="Target IP">
+              <el-input size="small" v-model="item.targetip" placeholder="192.168.1.1"></el-input>
+            </el-form-item>
+            <div>
+              <el-button @click="startPing(item)" type="text" class="button">Ping</el-button>
+              <el-button @click="startTraceroute(item)" type="text" class="button">Traceroute</el-button>
+              <el-button @click="deleteContainer(item)" size="mini" type="danger" class="button">Delete</el-button>
+            </div>
+          </el-form>
+        </el-card>
+      </el-col>
+    </el-row>
+    <div id="LogArea">
       <template>
         <el-table
-          :data="containerData"
+          :data="tableData"
           border
           style="width: 100%">
-          <el-table-column prop="name" label="name" width="180"></el-table-column>
-          <el-table-column prop="service_ip" label="service_ip"></el-table-column>
-          <el-table-column prop="management_ip" label="management_ip"></el-table-column>
-          <el-table-column prop="network" label="network "></el-table-column>
-          <el-table-column prop="vlan" label="vlan "></el-table-column>
           <el-table-column
-            fixed="right"
-            label="Operations"
-            width="120">
-            <template scope="scope">
-              <el-button @click="startPing(scope.$index, containerData)" type="primary" size="small">ping</el-button>
-              <el-button @click="deleteContainer(scope.$index, containerData)" type="danger" size="small">delete</el-button>
-            </template>
+            prop="date"
+            label="Date"
+            width="180">
+          </el-table-column>
+          <el-table-column
+            prop="name"
+            label="Name"
+            width="180">
+          </el-table-column>
+          <el-table-column
+            prop="address"
+            label="Address">
           </el-table-column>
         </el-table>
       </template>

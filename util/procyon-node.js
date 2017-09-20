@@ -3,10 +3,12 @@ const Client		= require('ssh2').Client;
 const vagrantfile 	= "/Users/walletbook/Procyon/procyon_node_vagrant";
 const mongo         = require("./mongo");
 const moment        = require("moment");
+const sudo 			= require('sudo-prompt');
+const os 			= require('os');
+const S 			= require('string');
+const promiseRetry 	= require('promise-retry');
 
 const machine = vagrant.create({ cwd: vagrantfile, env: process.env });
-
-
 
 const ssh_config = {
 			  host: '200.200.0.2',
@@ -53,14 +55,14 @@ module.exports = {
 
 			const conn = new Client();
 			conn.on('ready', function() {
-				console.log('Client :: ready');
+				// console.log('Client :: ready');
 				conn.exec(
 					"docker inspect -f '{{.NetworkSettings.Networks.mgmt_net.IPAddress}}'" + " procyon-node-app" + dockerNumber + " &&" +
 					"docker inspect -f '{{.NetworkSettings.Networks."  + "dedicated_net" + nwNumber + ".IPAddress}}'" + " procyon-node-app" + dockerNumber
 				, function(err, stream) {
 					if (err) throw err;
 					stream.on('close', function(code, signal) {
-						console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
+						// console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
 						conn.end();
 						resolve(value);
 
@@ -91,6 +93,129 @@ module.exports = {
 				}
 				resolve(0);
 			});
+		});
+	},
+	runDocker : function runDocker(nwNumber,dockerNumber) {
+		return new Promise(function (resolve,reject){
+			const value = {
+				docker_id : dockerNumber,
+				network_id : nwNumber,
+				docker_name : "procyon-node-app" + dockerNumber,
+				network_name: "dedicated_net" + nwNumber,
+				timestamp:moment().format()
+			}
+			const conn = new Client();
+			conn.on('ready', function() {
+				// console.log('Client :: ready');
+				conn.exec(
+					"docker run --name procyon-node-app" + dockerNumber + " -e TZ=Asia/Tokyo --net=mgmt_net -d wallet0013/procyon-node-app:1.0 node app.js 200.200.0.3 200.200.0.1:50001" + " &&" +
+					"docker network connect dedicated_net" + nwNumber + " procyon-node-app" + dockerNumber
+				, function(err, stream) {
+					if (err) throw err;
+					stream.on('close', function(code, signal) {
+						console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
+						conn.end();
+
+						if(code == 0){
+							resolve(value);
+
+						}
+					}).on('data', function(data) {
+						nodeTool.$message({message:"created app",type:"info"});
+						console.log('STDOUT: ' + data);
+					}).stderr.on('data', function(data) {
+						console.log('STDERR: ' + data);
+					});
+
+				});
+			}).connect(ssh_config);
+		});
+	},
+	flushContainer : function flushContainer(data) {
+		return new Promise(function (resolve,reject){
+			const conn = new Client();
+			conn.on('ready', function() {
+				// console.log('Client :: ready');
+				// console.log(data);
+				const command = "docker rm -f `docker ps -a -q -f \"name=procyon-node-app*\"`";
+				console.log(command);
+				conn.exec(command, function(err, stream) {
+					if (err) throw err;
+					stream.on('close', function(code, signal) {
+						console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
+						conn.end();
+
+						if(code == 0){
+							resolve(0);
+						}
+					}).on('data', function(data) {
+						console.log('STDOUT: ' + data);
+					}).stderr.on('data', function(data) {
+						resolve(0);
+						console.log("no container at all");
+						// console.log('STDERR: ' + data);
+					});
+
+				});
+			}).connect(ssh_config);
+		});
+	},
+	flushArptable : function flushArptable() {
+		return new Promise(function (resolve,reject){
+			// console.log("called flush arp table");
+			// const platform = ;
+			const command = S(os.platform()).contains(/^win/) ? "arp -d" : 'arp -a -d';
+			console.log(command);
+			sudo.exec(command, {name: 'Procyon'},
+			  function(error, stdout, stderr) {
+			    if (error) throw error;
+			    console.log('stdout: ' + stdout);
+			  }
+			);
+		});
+	},
+	addNetwork_novlan : function addNetwork_novlan(number,ip,range,gateway,exclude) {
+		return new Promise(function (resolve,reject){
+			const value = {
+				network_id : number,
+				vlan : null,
+				ip: ip,
+				gateway: gateway,
+				network_name: "dedicated_net" + number,
+				timestamp:moment().format()
+			}
+
+			let command;
+			if(range){
+				command = "sudo docker network create --driver macvlan --subnet=" + ip + " --gateway=" + gateway + " --ip-range=" + range + " -o parent=eth1 dedicated_net" + number + " ; sleep 5"
+			}else{
+				command = "sudo docker network create --driver macvlan --subnet=" + ip + " --gateway=" + gateway + " -o parent=eth1 dedicated_net" + number + " ; sleep 5"
+			}
+
+			// create network
+			const conn = new Client();
+			conn.on('ready', function() {
+				console.log('Client :: ready');
+				conn.exec(command, function(err, stream) {
+					if (err) throw err;
+					stream.on('close', function(code, signal) {
+						console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
+						conn.end();
+						// insert db when success
+						if(code == 0){
+							mongo.insertNetwork(value);
+						}
+					}).on('data', function(data) {
+						console.log('STDOUT: ' + data);
+					}).stderr.on('data', function(data) {
+						console.log('STDERR: ' + data);
+					});
+
+				});
+			}).connect(ssh_config);
+
+			resolve(0);
+
 		});
 	},
 	setMgmt : function setMgmt(ip,gateway) {
@@ -187,9 +312,9 @@ module.exports = {
 		return new Promise(function (resolve,reject){
 			const conn = new Client();
 			conn.on('ready', function() {
-				console.log('Client :: ready');
-				console.log(data);
-				const command = "docker rm -f " + data.name;
+				// console.log('Client :: ready');
+				// console.log(data);
+				const command = "docker rm -f " + data;
 				console.log(command);
 				conn.exec(command, function(err, stream) {
 					if (err) throw err;
@@ -210,111 +335,5 @@ module.exports = {
 			}).connect(ssh_config);
 		});
 	},
-	flushContainer : function flushContainer(data) {
-		return new Promise(function (resolve,reject){
-			const conn = new Client();
-			conn.on('ready', function() {
-				console.log('Client :: ready');
-				console.log(data);
-				const command = "docker rm -f `docker ps -a -q -f \"name=procyon-node-app*\"`";
-				console.log(command);
-				conn.exec(command, function(err, stream) {
-					if (err) throw err;
-					stream.on('close', function(code, signal) {
-						console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
-						conn.end();
 
-						if(code == 0){
-							resolve(0);
-						}
-					}).on('data', function(data) {
-						console.log('STDOUT: ' + data);
-					}).stderr.on('data', function(data) {
-						console.log('STDERR: ' + data);
-					});
-
-				});
-			}).connect(ssh_config);
-		});
-	},
-	addNetwork_novlan : function addNetwork_novlan(number,ip,range,gateway,exclude) {
-		return new Promise(function (resolve,reject){
-			const value = {
-				network_id : number,
-				vlan : null,
-				ip: ip,
-				gateway: gateway,
-				network_name: "dedicated_net" + number,
-				timestamp:moment().format()
-			}
-
-			let command;
-			if(range){
-				command = "sudo docker network create --driver macvlan --subnet=" + ip + " --gateway=" + gateway + " --ip-range=" + range + " -o parent=eth1 dedicated_net" + number + " ; sleep 5"
-			}else{
-				command = "sudo docker network create --driver macvlan --subnet=" + ip + " --gateway=" + gateway + " -o parent=eth1 dedicated_net" + number + " ; sleep 5"
-			}
-
-			// create network
-			const conn = new Client();
-			conn.on('ready', function() {
-				console.log('Client :: ready');
-				conn.exec(command, function(err, stream) {
-					if (err) throw err;
-					stream.on('close', function(code, signal) {
-						console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
-						conn.end();
-						// insert db when success
-						if(code == 0){
-							mongo.insertNetwork(value);
-						}
-					}).on('data', function(data) {
-						console.log('STDOUT: ' + data);
-					}).stderr.on('data', function(data) {
-						console.log('STDERR: ' + data);
-					});
-
-				});
-			}).connect(ssh_config);
-
-			resolve(0);
-
-		});
-	},
-	runDocker : function runDocker(nwNumber,dockerNumber) {
-		return new Promise(function (resolve,reject){
-			const value = {
-				docker_id : dockerNumber,
-				network_id : nwNumber,
-				docker_name : "procyon-node-app" + dockerNumber,
-				network_name: "dedicated_net" + nwNumber,
-				timestamp:moment().format()
-			}
-			const conn = new Client();
-			conn.on('ready', function() {
-				console.log('Client :: ready');
-				conn.exec(
-					"docker run --name procyon-node-app" + dockerNumber + " -e TZ=Asia/Tokyo --net=mgmt_net -d wallet0013/procyon-node-app:1.0 node app.js 200.200.0.3 200.200.0.1:50001" + " &&" +
-					"docker network connect dedicated_net" + nwNumber + " procyon-node-app" + dockerNumber
-				, function(err, stream) {
-					if (err) throw err;
-					stream.on('close', function(code, signal) {
-						console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
-						conn.end();
-
-						if(code == 0){
-							resolve(value);
-
-						}
-					}).on('data', function(data) {
-						nodeTool.$message({message:"created app",type:"info"});
-						console.log('STDOUT: ' + data);
-					}).stderr.on('data', function(data) {
-						console.log('STDERR: ' + data);
-					});
-
-				});
-			}).connect(ssh_config);
-		});
-	},
 }
