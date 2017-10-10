@@ -6,7 +6,6 @@ const moment        = require("moment");
 const sudo 			= require('sudo-prompt');
 const os 			= require('os');
 const S 			= require('string');
-const promiseRetry 	= require('promise-retry');
 
 const machine = vagrant.create({ cwd: vagrantfile, env: process.env });
 
@@ -204,6 +203,7 @@ module.exports = {
 						// insert db when success
 						if(code == 0){
 							mongo.insertNetwork(value);
+							resolve(0);
 						}
 					}).on('data', function(data) {
 						console.log('STDOUT: ' + data);
@@ -214,21 +214,19 @@ module.exports = {
 				});
 			}).connect(ssh_config);
 
-			resolve(0);
-
 		});
 	},
-	setMgmt : function setMgmt(ip,gateway) {
+	setMgmt : function setMgmt(ip,gateway,callback) {
 		return new Promise(function (resolve,reject){
 			const conn = new Client();
 			conn.on('ready', function() {
 				console.log('Client :: ready');
 				conn.exec(
 					"sudo ip link del docker0 ; sudo ip link del docker-sys && " +
-					"sudo ip link set eth0 down && " +
+					// "sudo ip link set eth0 down && " +
 					"sudo ros config set rancher.network.interfaces.eth1.address " + ip + " && " +
-					"sudo ros config set rancher.network.interfaces.eth1.gateway " + gateway + " && " +
-					"sudo ros config set rancher.network.interfaces.eth0.address 0.0.0.0 && " +
+					// "sudo ros config set rancher.network.interfaces.eth1.gateway " + gateway + " && " +
+					// "sudo ros config set rancher.network.interfaces.eth0.address 0.0.0.0 && " +
 					"sudo system-docker restart network && " +
 					"docker network create --driver=macvlan --subnet=200.200.0.0/16 --ip-range=200.200.128.0/17 -o parent=eth2 mgmt_net"
 				, function(err, stream) {
@@ -248,6 +246,7 @@ module.exports = {
 				});
 			}).connect(ssh_config);
 			resolve(0);
+			callback();
 		});
 	},
 	setMongo : function setMongo(ip,gateway) {

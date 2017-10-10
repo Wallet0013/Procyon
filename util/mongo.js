@@ -5,7 +5,6 @@ const co 			= require("co");
 const os 			= require('os');
 
 
-
 module.exports = {
 	getDockernumber : function getDockernumber() {
 		return new Promise(function (resolve,reject){
@@ -44,10 +43,12 @@ module.exports = {
 				// console.log(result);
 				if(result.length == 1){
 					resolve(result[0].network_id);
-				} else if (result == null){
+				} else if (result.length == 0){
+					console.log("00000だよ");
 					resolve("00000");
 				} else{
-					reject("error the network too many or not found");
+					// console.log("too many　の result ", result);
+					reject("error the network too many");
 
 				}
 

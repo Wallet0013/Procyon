@@ -28,8 +28,8 @@
         <el-form-item label="Gateway">
           <el-input placeholder="Gateway : 192.168.1.1" v-model="nodeGateway"> </el-input>
         </el-form-item>
-        <el-button type="primary" @click="bootNode">BootNode</el-button>
-        <el-button type="primary" @click="setAddress">SetIP</el-button>
+        <el-button type="primary" @click="bootNode" v-bind:disabled="bootnodeDisabled">BootNode</el-button>
+        <!-- <el-button type="primary" @click="setAddress">Reset IP</el-button> -->
         <el-button type="info" @click="getVersion">GetVersion</el-button>
         <el-button type="danger" @click="deleteNode">DeleteNode</el-button>
       </el-form>
@@ -53,11 +53,8 @@
         <el-form-item label="Exclude IP">
           <el-input placeholder="Exclude : 192.168.1.1" v-model="form.exclude"> </el-input>
         </el-form-item>
-        <el-form-item label="Destnation">
-          <el-input placeholder="dest : 192.168.1.1" v-model="form.dest"> </el-input>
-        </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="addApp">Add</el-button>
+          <el-button type="primary" @click="addApp" v-bind:disabled="addappDisabled">Add App</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -80,7 +77,7 @@
       </el-form>
     </div>
     <el-row id="ResultArea" >
-      <el-col :span="6" v-for="(item, index) in AppData" :key="item" :offset="1">
+      <el-col :span="6" v-for="(item, index) in AppData" :key="index" :offset="1">
         <el-card :body-style="{ padding: '20px' }">
           <el-form :label-position="labelPosition">
             <el-form-item label="Management IP">
@@ -114,21 +111,22 @@
           border
           style="width: 100%">
           <el-table-column
-            prop="date"
-            label="Date"
+            prop="timestamp"
+            label="timestamp"
             width="180">
           </el-table-column>
           <el-table-column
-            prop="name"
-            label="Name"
+            prop="source"
+            label="Source"
             width="180">
           </el-table-column>
           <el-table-column
-            prop="address"
-            label="Address">
+            prop="dest"
+            label="Dest">
           </el-table-column>
         </el-table>
       </template>
+      <el-button @click="printMongo()" type="primary" class="button">mongo</el-button>
     </div>
 
 <!--     <div id="resultBox" >

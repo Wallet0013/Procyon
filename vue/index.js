@@ -4,7 +4,6 @@ const ipaddr        = require("ip");
 const axios         = require("axios");
 const promiseRetry  = require('promise-retry');
 
-const pingTools     = require("./util/ping");
 const mongo         = require("./util/mongo");
 const procyon_node  = require("./util/procyon-node");
 
@@ -29,9 +28,9 @@ function addNetwork(existNW,networkCidr,nodeAdd) {
         } else{
           // is not specific vlan
           nodeTool.$message("add network with native vlan");
+          console.log("add network with native vlan");
           ////////////// check duplicate eth
           resolve(yield procyon_node.addNetwork_novlan(nwNumber,networkCidr,nodeAdd.form.IPrange,nodeAdd.form.gateway,nodeAdd.form.exclude));
-          
         }
       }else{
         resolve(0);
@@ -49,19 +48,32 @@ const nodeTool = new Vue ({
   data() {
     return {
       nodeIP:'172.20.10.2/24',
-      nodeGateway:'172.20.10.1'
+      nodeGateway:'172.20.10.1',
+      bootnodeDisabled:false
     }
   },
   methods : {
     bootNode() {
       co(function* () {
-        nodeTool.$message("Booting Procyon node! Please wait few minutes");
-        // const status = yield procyon_node.getStatus();
+        // flush arp table;
+        containerTable.flushArptable();
+
+        // disable boot button
+        nodeTool.bootnodeDisabled = true;
+
+        nodeTool.$message("Booting Procyon node! Please wait about 2 minutes");
         const MachineStatus = yield procyon_node.getMachineStatus();
         const status = MachineStatus["rancher-01"].status
         if( status == "running"){
           nodeTool.$message({message:"Procyon node is already running.",type:"warning"});
+          // release boot button
+          nodeTool.bootnodeDisabled = false;
         } else{
+          let bootcnt = 120;
+          const bootTimer = setInterval( () =>{
+            bootcnt--;
+            nodeTool.$message("Booting Timer " + bootcnt + " secounds");
+          }, 1000);
           yield procyon_node.bootNode();
 
           // retry
@@ -73,10 +85,19 @@ const nodeTool = new Vue ({
           },function (retry, number) {
             console.log('attempt number', number);
             return procyon_node.setMgmt(nodeTool.nodeIP,nodeTool.nodeGateway)
-            .catch(retry);
+            // .catch(retry);
+            .catch(function (err) {
+                if (err.code === 'ETIMEDOUT') {
+                    retry(err);
+                    console.log("えらーだよ");
+                }
+                throw err;
+            });
           })
           .then(function (value) {
             procyon_node.setMongo();
+            nodeTool.bootnodeDisabled = false;
+            clearInterval(bootTimer);
           }, function (err) {
             console.log("error");
           });
@@ -97,12 +118,13 @@ const nodeTool = new Vue ({
       procyon_node.setAddress(nodeTool.nodeIP,nodeTool.nodeGateway);
     },
     getVersion() {
+
       nodeTool.$message("Get vagrant version");
       procyon_node.getVersion();
     },
     deleteNode() {
       nodeTool.$message("Delete Procyon node");
-        procyon_node.deleteNode();
+      procyon_node.deleteNode();
     }
   }
 })
@@ -135,12 +157,14 @@ const nodeAdd = new Vue ({
         IPrange:"172.20.10.8/29",
         gateway:"172.20.10.1",
         exclude:""
-      }
+      },
+      addappDisabled:false
     }
   },
   methods : {
     addApp() {
       co(function* () {
+        nodeAdd.addappDisabled = true;
         let dockerNumber;
         let nwNumber;
 
@@ -155,7 +179,7 @@ const nodeAdd = new Vue ({
         dockerNumber = yield mongo.getDockernumber();
 
         // add the network if the network not found
-        yield addNetwork(existNW,networkCidr,nodeAdd);
+        const result = yield addNetwork(existNW,networkCidr,nodeAdd);
 
         // run app container
         nwNumber = yield mongo.getNetworkID(networkCidr);
@@ -182,6 +206,7 @@ const nodeAdd = new Vue ({
         });
         containerTable.containerData = ContainerTableValue;
         ResultArea.AppData = ContainerTableValue;
+        nodeAdd.addappDisabled = false;
       });
     }
   }
@@ -298,6 +323,27 @@ const ResultArea = new Vue ({
   }
 })
 
+
+const LogArea = new Vue({
+  el: "#LogArea",
+  data (){
+    return{
+      tableData:[{
+        timestamp:"aaa",
+        source:"source",
+        dest:"dest"
+
+      }]
+    }
+  },
+  methods: {
+    printMongo(){
+      setInterval(() =>{
+        console.log("tets");
+      },1000)
+    }
+  }
+})
 
 
 // let pinglog = new Array();
