@@ -11,17 +11,17 @@
   "dependencies": {
     "axios": "^0.16.2",
     "co": "^4.6.0",
-    "element-ui": "^1.4.2",
+    "element-ui": "^1.4.6",
     "ip": "^1.1.5",
-    "moment": "^2.18.1",
+    "moment": "^2.19.0",
     "mongodb": "^2.2.31",
-    "node-ssh": "^4.2.3",
-    "node-vagrant": "^1.1.0",
+    "node-ssh": "^5.0.0",
+    "node-vagrant": "^1.2.0",
     "os": "^0.1.1",
     "promise-retry": "^1.1.1",
     "ssh2": "^0.5.5",
     "string": "^3.3.3",
     "sudo-prompt": "^7.1.1",
-    "vue": "^2.4.2"
+    "vue": "^2.4.4"
   }
 }

@@ -1,6 +1,6 @@
 const vagrant 		= require('node-vagrant');
 const Client		= require('ssh2').Client;
-const vagrantfile 	= "/Users/walletbook/Procyon/procyon_node_vagrant";
+const vagrantfile 	= "./vagrant/";
 const mongo         = require("./mongo");
 const moment        = require("moment");
 const sudo 			= require('sudo-prompt');
@@ -83,10 +83,22 @@ module.exports = {
 
 		});
 	},
+	haltNode : function haltNode() {
+		return new Promise(function (resolve,reject){
+			machine.halt(function (err, out) {
+				nodeTool.$message({message:"shutdown node",type:"info"});
+				if (err) {
+					throw new Error(err);
+				}
+				resolve(0);
+			});
+		});
+	},
 	bootNode : function bootNode() {
 		return new Promise(function (resolve,reject){
 			machine.up(function (err, out) {
 				nodeTool.$message({message:"Procyon node is running.",type:"info"});
+				console.log("booted");
 				if (err) {
 					throw new Error(err);
 				}
@@ -223,9 +235,9 @@ module.exports = {
 				console.log('Client :: ready');
 				conn.exec(
 					"sudo ip link del docker0 ; sudo ip link del docker-sys && " +
-					// "sudo ip link set eth0 down && " +
+					"sudo ip link set eth0 down && " +
 					"sudo ros config set rancher.network.interfaces.eth1.address " + ip + " && " +
-					// "sudo ros config set rancher.network.interfaces.eth1.gateway " + gateway + " && " +
+					"sudo ros config set rancher.network.interfaces.eth1.gateway " + gateway + " && " +
 					// "sudo ros config set rancher.network.interfaces.eth0.address 0.0.0.0 && " +
 					"sudo system-docker restart network && " +
 					"docker network create --driver=macvlan --subnet=200.200.0.0/16 --ip-range=200.200.128.0/17 -o parent=eth2 mgmt_net"

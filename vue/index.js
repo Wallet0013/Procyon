@@ -3,6 +3,7 @@ const moment        = require("moment");
 const ipaddr        = require("ip");
 const axios         = require("axios");
 const promiseRetry  = require('promise-retry');
+const child_process = require("child_process");
 
 const mongo         = require("./util/mongo");
 const procyon_node  = require("./util/procyon-node");
@@ -10,6 +11,20 @@ const procyon_node  = require("./util/procyon-node");
 axios.defaults.timeout = 1000;
 
 let ContainerTableValue = new Array();
+
+let wacher = child_process.fork("./vue/mongo-wacher.js");
+
+// startWacher();
+
+function startWacher() {
+  wacher.send({
+    interval : 1000
+  });
+
+  wacher.on("message", function (result) {
+      console.log(result);
+  });
+}
 
 
 function addNetwork(existNW,networkCidr,nodeAdd) {
@@ -61,15 +76,22 @@ const nodeTool = new Vue ({
         // disable boot button
         nodeTool.bootnodeDisabled = true;
 
-        nodeTool.$message("Booting Procyon node! Please wait about 2 minutes");
+        nodeTool.$message("Booting Procyon node! Please wait about 3 minutes");
         const MachineStatus = yield procyon_node.getMachineStatus();
-        const status = MachineStatus["rancher-01"].status
+        const status = MachineStatus["Procyon-node-01"].status
         if( status == "running"){
           nodeTool.$message({message:"Procyon node is already running.",type:"warning"});
           // release boot button
           nodeTool.bootnodeDisabled = false;
+        // } else if(status == "poweroff"){
+        //     console.log("find procyon-node");
+        //     nodeTool.$message({message:"find procyon-node",type:"info"});
+        //     yield procyon_node.bootNode();
+        //     nodeTool.bootnodeDisabled = false;
+
         } else{
-          let bootcnt = 120;
+          // console.log("status",status);
+          let bootcnt = 180;
           const bootTimer = setInterval( () =>{
             bootcnt--;
             nodeTool.$message("Booting Timer " + bootcnt + " secounds");
@@ -89,7 +111,7 @@ const nodeTool = new Vue ({
             .catch(function (err) {
                 if (err.code === 'ETIMEDOUT') {
                     retry(err);
-                    console.log("えらーだよ");
+                    console.log("ssh error");
                 }
                 throw err;
             });
@@ -118,9 +140,13 @@ const nodeTool = new Vue ({
       procyon_node.setAddress(nodeTool.nodeIP,nodeTool.nodeGateway);
     },
     getVersion() {
-
       nodeTool.$message("Get vagrant version");
       procyon_node.getVersion();
+    },
+    haltNode() {
+      nodeTool.$message("killing node");
+      procyon_node.haltNode();
+
     },
     deleteNode() {
       nodeTool.$message("Delete Procyon node");
@@ -338,9 +364,10 @@ const LogArea = new Vue({
   },
   methods: {
     printMongo(){
-      setInterval(() =>{
-        console.log("tets");
-      },1000)
+      // setInterval(() =>{
+      //   console.log("tets");
+      // },1000)
+      startWacher();
     }
   }
 })
