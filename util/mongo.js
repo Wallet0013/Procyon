@@ -6,6 +6,42 @@ const os 			= require('os');
 
 
 module.exports = {
+	getStatus : function getStatus() {
+		return new Promise(function (resolve,reject){
+			co(function* () {
+				try{
+					const db = yield MongoClient.connect(url);
+					yield db.close();
+					resolve(0);
+				}catch(e){
+					reject(127);
+				}
+
+			}).catch(function(err){
+				process.on('unhandledRejection', console.log(err));
+			});
+
+		});
+	},
+	getPingCollection : function getPingCollection(limit) {
+		return new Promise(function (resolve,reject){
+			co(function* () {
+				try{
+					db = yield MongoClient.connect(url);
+					let pinglog = yield db.collection("ping").find().sort({_id: -1}).limit(Number(limit)).toArray()
+					db.close();
+					resolve(pinglog);
+				}catch(e){
+					console.log("error : " + e);
+					reject(127);
+				}
+
+			}).catch(function(err){
+				process.on('unhandledRejection', console.log(err));
+			});
+
+		});
+	},
 	getDockernumber : function getDockernumber() {
 		return new Promise(function (resolve,reject){
 			co(function* () {
@@ -90,7 +126,6 @@ module.exports = {
 		return new Promise(function (resolve,reject){
 			co(function* () {
 				const db = yield MongoClient.connect(url);
-				// console.log(name);
 				const result = yield db.collection("networks").find({network_name:name}).toArray();
 
 				yield db.close();
@@ -107,7 +142,6 @@ module.exports = {
 		return new Promise(function (resolve,reject){
 			co(function* () {
 				const db = yield MongoClient.connect(url);
-				// console.log(name);
 				const result = yield db.collection("networks").find({network_name:name}).toArray();
 
 				yield db.close();
@@ -128,6 +162,36 @@ module.exports = {
 				const result = yield db.collection("container").find({service_ip:ip}).toArray();
 				yield db.close();
 				resolve(result[0].docker_name);
+
+			}).catch(function(err){
+				process.on('unhandledRejection', console.log(err));
+			});
+
+		});
+	},
+	// get docker infomation to reload created container
+	getDockreInfomation : function getDockreInfomation() {
+		return new Promise(function (resolve,reject){
+			co(function* () {
+				let db;
+				try{
+					db = yield MongoClient.connect(url);
+					const result = yield db.collection("container").find().toArray();
+					yield db.close();
+					let value = new Array();
+					for(i=0;i < result.length; i++){
+						value.push({
+							management_ip:result[i].management_ip,
+		          			service_ip:result[i].service_ip,
+		         			network:result[i].ip,
+		          			vlan:result[i].vlan
+						})
+					}
+					resolve(value);
+				} catch(e){
+					reject();
+				}
+
 
 			}).catch(function(err){
 				process.on('unhandledRejection', console.log(err));

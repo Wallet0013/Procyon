@@ -10,6 +10,7 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^0.16.2",
+    "bignumber.js": "^4.1.0",
     "co": "^4.6.0",
     "element-ui": "^1.4.6",
     "ip": "^1.1.5",
@@ -22,6 +23,7 @@
     "ssh2": "^0.5.5",
     "string": "^3.3.3",
     "sudo-prompt": "^7.1.1",
-    "vue": "^2.4.4"
+    "vue": "^2.4.4",
+    "webpack": "^3.7.1"
   }
 }

@@ -4,6 +4,8 @@ const ipaddr        = require("ip");
 const axios         = require("axios");
 const promiseRetry  = require('promise-retry');
 const child_process = require("child_process");
+const BigNumber     = require("bignumber.js");
+
 
 const mongo         = require("./util/mongo");
 const procyon_node  = require("./util/procyon-node");
@@ -12,20 +14,67 @@ axios.defaults.timeout = 1000;
 
 let ContainerTableValue = new Array();
 
-let wacher = child_process.fork("./vue/mongo-wacher.js");
+let watcher = child_process.fork("./vue/mongo-wacher-ping.js");
 
-// startWacher();
 
-function startWacher() {
-  wacher.send({
-    interval : 1000
+// print mongo db data process
+function startWatcher() {
+  stopWatcher();
+  watcher.send({
+    interval : LogArea.interval,
+    start : "tes",
+    end : "tes",
+    limit : LogArea.logLimit
   });
 
-  wacher.on("message", function (result) {
-      console.log(result);
+  watcher.on("message", function (result) {
+    co(function* () {
+      // console.log(result);
+      const transResult = yield pingLogConvertor(result);
+      LogArea.tableData = transResult;
+      LogArea.masterData = LogArea.tableData;
+    }).catch(function(err){
+      process.on('unhandledRejection', console.log(err));
+    });
   });
 }
 
+function stopWatcher() {
+  co(function* () {
+    watcher.kill('SIGKILL');
+    watcher = child_process.fork("./vue/mongo-wacher-ping.js");
+  })
+}
+
+function pingLogConvertor(result){
+  return new Promise(function (resolve,reject){
+    let transResult = new Array();
+    if(result.length == 0){
+      transResult.push({
+        source:"No Data",
+        dest:"No Data",
+        alive:"No Data",
+        time:"No Data",
+        timestamp:"No Data",
+        message:"No Data"
+      });
+    }else{
+      for(i=0;i < result.length; i++){
+        let transTime;
+        transTime = (result[i].microsec / 1000).toString();
+        transResult.push({
+          source:result[i].source,
+          dest:result[i].destnation,
+          alive:result[i].alive + "",
+          time:transTime,
+          timestamp:moment(result[i].timestamp[0],"X").format('YYYY-MM-DD_h:mm:ss') + "." + result[i].timestamp[1].toString().slice(0,3),
+          message:result[i].error + ""
+        })
+      }
+    }
+    resolve(transResult);
+  });
+}
 
 function addNetwork(existNW,networkCidr,nodeAdd) {
   return new Promise(function (resolve,reject){
@@ -64,33 +113,25 @@ const nodeTool = new Vue ({
     return {
       nodeIP:'172.20.10.2/24',
       nodeGateway:'172.20.10.1',
-      bootnodeDisabled:false
+      bootnodeDisabled:false,
+      DisableInput:false,
+      dialogVisible:false,
     }
   },
   methods : {
     bootNode() {
       co(function* () {
-        // flush arp table;
-        containerTable.flushArptable();
-
-        // disable boot button
-        nodeTool.bootnodeDisabled = true;
+        containerTable.flushArptable();   // flush arp table;
+        nodeTool.bootnodeDisabled = true; // lock boot button
+        nodeTool.DisableInput = true;
 
         nodeTool.$message("Booting Procyon node! Please wait about 3 minutes");
         const MachineStatus = yield procyon_node.getMachineStatus();
         const status = MachineStatus["Procyon-node-01"].status
         if( status == "running"){
           nodeTool.$message({message:"Procyon node is already running.",type:"warning"});
-          // release boot button
-          nodeTool.bootnodeDisabled = false;
-        // } else if(status == "poweroff"){
-        //     console.log("find procyon-node");
-        //     nodeTool.$message({message:"find procyon-node",type:"info"});
-        //     yield procyon_node.bootNode();
-        //     nodeTool.bootnodeDisabled = false;
-
+          nodeTool.bootnodeDisabled = false; // release boot button
         } else{
-          // console.log("status",status);
           let bootcnt = 180;
           const bootTimer = setInterval( () =>{
             bootcnt--;
@@ -124,12 +165,6 @@ const nodeTool = new Vue ({
             console.log("error");
           });
 
-          // yield procyon_node.setMgmt(nodeTool.nodeIP,nodeTool.nodeGateway ,function(err){
-          //   if (err) {
-          //     nodeTool.$message({message:"Errorだよ",type:"error"});
-          //   }
-          // });
-
           /////// ツールボックスを開放
 
         }
@@ -144,11 +179,12 @@ const nodeTool = new Vue ({
       procyon_node.getVersion();
     },
     haltNode() {
-      nodeTool.$message("killing node");
+      nodeTool.$message("kill node");
       procyon_node.haltNode();
 
     },
     deleteNode() {
+      nodeTool.dialogVisible = false;
       nodeTool.$message("Delete Procyon node");
       procyon_node.deleteNode();
     }
@@ -188,7 +224,7 @@ const nodeAdd = new Vue ({
     }
   },
   methods : {
-    addApp() {
+    addApp(type) {
       co(function* () {
         nodeAdd.addappDisabled = true;
         let dockerNumber;
@@ -209,7 +245,54 @@ const nodeAdd = new Vue ({
 
         // run app container
         nwNumber = yield mongo.getNetworkID(networkCidr);
-        let dockerValue = yield procyon_node.runDocker(nwNumber,dockerNumber);
+        let dockerValue = yield procyon_node.runDocker(nwNumber,dockerNumber,type);
+
+        // insert docker info to mongo
+        const tmp = yield procyon_node.getDockerNetwork(nwNumber,dockerNumber,type);
+        dockerValue.ip = yield mongo.getNetworkAddress(dockerValue.network_name);
+        const tmpVlan = yield mongo.getNetworkVlan(dockerValue.network_name);
+        if(tmpVlan){
+          dockerValue.vlan = tmpVlan;
+        }else{
+          dockerValue.vlan = "native";
+        }
+        dockerValue.management_ip = tmp.split("\n")[0];
+        dockerValue.service_ip = tmp.split("\n")[1];
+        mongo.insertDockerNW(dockerValue);
+
+        ContainerTableValue.push({
+          management_ip:dockerValue.management_ip,
+          service_ip:dockerValue.service_ip,
+          network:dockerValue.ip,
+          vlan:dockerValue.vlan
+        });
+        containerTable.containerData = ContainerTableValue;
+        ResultArea.AppData = ContainerTableValue;
+        nodeAdd.addappDisabled = false;
+      });
+    },
+    addSyslog() {
+      co(function* () {
+        nodeAdd.addappDisabled = true;
+        let dockerNumber;
+        let nwNumber;
+
+        // get network info from input
+        const networkInfo = ipaddr.cidrSubnet(nodeAdd.form.IPaddr);
+        const networkCidr = networkInfo.networkAddress + "/" + networkInfo.subnetMaskLength;
+
+        // check network exist
+        const existNW = yield mongo.existNetwork(networkCidr);
+
+        // get docker number from mongo
+        dockerNumber = yield mongo.getDockernumber();
+
+        // add the network if the network not found
+        const result = yield addNetwork(existNW,networkCidr,nodeAdd);
+
+        // run app container
+        nwNumber = yield mongo.getNetworkID(networkCidr);
+        let dockerValue = yield procyon_node.runSyslog(nwNumber,dockerNumber);
 
         // insert docker info to mongo
         const tmp = yield procyon_node.getDockerNetwork(nwNumber,dockerNumber);
@@ -265,22 +348,33 @@ const containerTable = new Vue({
       nodeTool.$message({message:"flush arp is require plivilede",type:"warning"});
       procyon_node.flushArptable();
     }
+  },
+  created: function() {
+    co(function* () {
+      try{
+        const data = yield mongo.getDockreInfomation();
+        ContainerTableValue = data;
+        ResultArea.AppData = ContainerTableValue;
+      }catch(e){
+        console.log("mongo is not started");
+      }
+    })
   }
 })
 
-
+// Container BOX Area
 const ResultArea = new Vue ({
   el:"#ResultArea",
   data(){
     return{
       AppData: ContainerTableValue,
       labelPosition: 'top',
-      currentDate: new Date()
+      currentDate: new Date(),
+      PingSwitchValue:false
     }
   },
   methods: {
-    startPing(data){
-      // console.log("ping started",data);
+    startPing(data,index){
       if (data.targetip == undefined){
         nodeTool.$message({message:"Target ip is null",type:"error"});
         return 127;
@@ -297,17 +391,30 @@ const ResultArea = new Vue ({
         this.sending = false
         nodeTool.$message({message:"success ping request ",type:"info"});
         console.log(res.status, res.statusText, res.data)
-        // console.log(this);
       })
       .catch(error => {
         this.sending = false
         nodeTool.$message({message:"fail ping request",type:"error"});
-
         throw error
       })
     },
-    startTraceroute(data){
-      // console.log("ping started",data);
+    stopPing(data,index){
+      const status = true;
+      this.isActive = false;
+      axios.post("http://" + data.management_ip + ":50001/stop_ping")
+      .then(res => {
+        this.sending = false
+        nodeTool.$message({message:"success stopping ping request ",type:"info"});
+        console.log(res.status, res.statusText, res.data)
+      })
+      .catch(error => {
+        this.sending = false
+        nodeTool.$message({message:"fail ping request",type:"error"});
+        throw error
+      })
+    },
+    startTraceroute(data,index){
+      console.log(this.$el.children[index].color);
       if (data.targetip == undefined){
         nodeTool.$message({message:"Target ip is null",type:"error"});
         return 127;
@@ -332,7 +439,7 @@ const ResultArea = new Vue ({
         throw error
       })
     },
-    deleteContainer(data) {
+    deleteContainer(data,index) {
       co(function* () {
         const dockerName = yield mongo.getDockerName(data.service_ip);
         yield procyon_node.deleteContainer(dockerName);
@@ -355,68 +462,147 @@ const LogArea = new Vue({
   data (){
     return{
       tableData:[{
-        timestamp:"aaa",
-        source:"source",
-        dest:"dest"
-
-      }]
+        source:"",
+        dest:"",
+        alive:"",
+        time:"",
+        timestamp:"",
+        error:"",
+      }],
+      masterData:[{
+        source:"",
+        dest:"",
+        alive:"",
+        time:"",
+        timestamp:"",
+        error:"",
+      }],
+      MongoSwitch:false,
+      interval:1000,
+      logLimit:100,
+      logStaticLimit:100,
+      filterLogsSource:"",
+      filterLogsDestnation:"",
+      filterLogsAlive:"",
+      filterLogsTime:"",
+      FilterTimeOption: {
+        shortcuts: [{
+          text: 'Yesterday',
+          onClick(picker) {
+            const end = new Date();
+            const start = new Date();
+            start.setTime(start.getTime() - 3600 * 1000 * 24 * 1);
+            picker.$emit('pick', [start, end]);
+          }
+        }, {
+          text: 'Last Week',
+          onClick(picker) {
+            const end = new Date();
+            const start = new Date();
+            start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
+            picker.$emit('pick', [start, end]);
+          }
+        }]
+      }
     }
   },
   methods: {
-    printMongo(){
-      // setInterval(() =>{
-      //   console.log("tets");
-      // },1000)
-      startWacher();
+    changeSwitch(value) {
+      co(function* () {
+      if(LogArea.MongoSwitch){
+          // LogArea.$el.getElementsByClassName("el-table")[0].hidden = false;
+          try{
+            yield mongo.getStatus();
+            startWatcher();
+          } catch(e){
+            console.log("failed");
+            nodeTool.$message({message:"failed connecting mongodb",type:"error"});
+            LogArea.MongoSwitch=false
+          }
+        }
+        else{
+          // LogArea.$el.getElementsByClassName("el-table")[0].hidden = true;
+          stopWatcher();
+        }
+      })
+    },
+    ReloadLogArea(){
+      co(function* () {
+        // console.log(this.logStaticLimit);
+        const result = yield mongo.getPingCollection(LogArea.logStaticLimit);
+        // console.log(result);
+        LogArea.tableData = result;
+      })
+    },
+  },
+  watch:{
+    filterLogsSource: function(e){
+      // const search_word = this.filterLogs;
+      const TargetData = LogArea.masterData;
+
+      if(this.filterLogsSource == ""){
+        console.log("data");
+        return LogArea.tableData = LogArea.masterData;
+      }
+
+
+      let find_logs = new Array();
+      for(data of TargetData){
+        let findFlg = 0;
+        if(data.source.indexOf(this.filterLogsSource) >= 0){ findFlg = 1; console.log("s")}
+        // if(data.message.indexOf(this.filterLogsSouce) >= 0){ findFlg = 1; }
+
+        if(findFlg >= 1){
+          find_logs.push(data);
+        }
+      }
+      LogArea.tableData = find_logs;
+    },
+    filterLogsDestnation: function(e){
+      // const search_word = this.filterLogs;
+      const TargetData = LogArea.masterData;
+
+      if(this.filterLogsDestnation == ""){
+        console.log("data");
+        return LogArea.tableData = LogArea.masterData;
+      }
+
+
+      let find_logs = new Array();
+      for(data of TargetData){
+        let findFlg = 0;
+        if(data.dest.indexOf(this.filterLogsDestnation) >= 0){ findFlg = 1; }
+
+        if(findFlg >= 1){
+          find_logs.push(data);
+        }
+      }
+      LogArea.tableData = find_logs;
+    },
+    filterLogsAlive: function(e){
+      // const search_word = this.filterLogs;
+      const TargetData = LogArea.masterData;
+
+      if(this.filterLogsAlive == ""){
+        console.log("data");
+        return LogArea.tableData = LogArea.masterData;
+      }
+
+
+      let find_logs = new Array();
+      for(data of TargetData){
+        let findFlg = 0;
+        if(data.alive.indexOf(this.filterLogsAlive) >= 0){ findFlg = 1; }
+
+        if(findFlg >= 1){
+          find_logs.push(data);
+        }
+      }
+      LogArea.tableData = find_logs;
+    },
+    filterLogsTime: function(e){
+      console.log("aaaa");
     }
   }
 })
-
-
-// let pinglog = new Array();
-// const pingBox = new Vue ({
-//   el: "#pingBox",
-//   data : {
-
-//   },
-//   data() {
-//     return {
-//       input: "10.135.57.254"
-//     }
-//   },
-//   methods : {
-//     ping() {
-//       co(function* () {
-//         const response = yield pingTools.pingto(pingBox.input);
-//         // console.log(response);
-//         // pinglog.unshift(response);
-//         mongo.insert_pinglog(response);
-//         pinglog.unshift({
-//           date: moment().format(),
-//           time: response.time,
-//           alive: "test",
-//           host: response.host,
-//           ip:response.numeric_host,
-//           output: response.output
-//         });
-//         resultBox.tableData = pinglog;
-//         // resultBox.results = pinglog;
-//         // return response;
-//       });
-//     }
-//   }
-// })
-
-// const resultBox = new Vue ({
-//     el: "#resultBox",
-//     data: {
-//       results : "",
-//       tableData : ""
-//     },
-//     data() {
-//       return {
-//         tableData: null
-//       }
-//     }
-// })
 

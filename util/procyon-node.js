@@ -15,6 +15,7 @@ const ssh_config = {
 			  username: 'rancher',
 			  password: 'rancher'
 			};
+const mongoIP = "200.200.0.3";
 
 module.exports = {
 	getStatus : function getStatus() {
@@ -47,7 +48,7 @@ module.exports = {
 			resolve(0);
 		});
 	},
-	getDockerNetwork : function getDockerNetwork(nwNumber,dockerNumber) {
+	getDockerNetwork : function getDockerNetwork(nwNumber,dockerNumber,type) {
 		return new Promise(function (resolve,reject){
 
 			let value;
@@ -56,12 +57,11 @@ module.exports = {
 			conn.on('ready', function() {
 				// console.log('Client :: ready');
 				conn.exec(
-					"docker inspect -f '{{.NetworkSettings.Networks.mgmt_net.IPAddress}}'" + " procyon-node-app" + dockerNumber + " &&" +
-					"docker inspect -f '{{.NetworkSettings.Networks."  + "dedicated_net" + nwNumber + ".IPAddress}}'" + " procyon-node-app" + dockerNumber
+					"docker inspect -f '{{.NetworkSettings.Networks.mgmt_net.IPAddress}}'" + " procyon-node-" + type + dockerNumber + " &&" +
+					"docker inspect -f '{{.NetworkSettings.Networks."  + "dedicated_net" + nwNumber + ".IPAddress}}'" + " procyon-node-" + type + dockerNumber
 				, function(err, stream) {
 					if (err) throw err;
 					stream.on('close', function(code, signal) {
-						// console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
 						conn.end();
 						resolve(value);
 
@@ -74,13 +74,10 @@ module.exports = {
 						console.log('STDOUT: ' + data);
 					}).stderr.on('data', function(data) {
 						console.log('STDERR: ' + data);
-						// nodeTool.$message({message:data,type:"error"});
 					});
 
 				});
 			}).connect(ssh_config);
-
-
 		});
 	},
 	haltNode : function haltNode() {
@@ -106,22 +103,39 @@ module.exports = {
 			});
 		});
 	},
-	runDocker : function runDocker(nwNumber,dockerNumber) {
+	runDocker : function runDocker(nwNumber,dockerNumber,type) {
 		return new Promise(function (resolve,reject){
 			const value = {
 				docker_id : dockerNumber,
 				network_id : nwNumber,
-				docker_name : "procyon-node-app" + dockerNumber,
+				docker_name : "procyon-node-" + type + dockerNumber,
 				network_name: "dedicated_net" + nwNumber,
+				type:type,
 				timestamp:moment().format()
 			}
+
+			// judge docker type
+			let command;
+			let portNumber;
+			switch (type) {
+				case "app":
+					command =
+						"docker run --name procyon-node-app" + dockerNumber + " -e TZ=Asia/Tokyo --net=mgmt_net -d wallet0013/procyon-node-app:1.0 node app.js " + mongoIP + " 200.200.0.1:50001" + " &&" +
+						"docker network connect dedicated_net" + nwNumber + " procyon-node-app" + dockerNumber;
+					break;
+
+				case "syslog":
+					portNumber = "514";
+					command =
+						"docker run --name procyon-node-syslog" + dockerNumber + " -e TZ=Asia/Tokyo --net=mgmt_net -d wallet0013/procyon-node-syslog:1.0 node index.js " + portNumber + " " + mongoIP + " &&" +
+						"docker network connect dedicated_net" + nwNumber + " procyon-node-syslog" + dockerNumber;
+					break;
+			}
+
 			const conn = new Client();
 			conn.on('ready', function() {
 				// console.log('Client :: ready');
-				conn.exec(
-					"docker run --name procyon-node-app" + dockerNumber + " -e TZ=Asia/Tokyo --net=mgmt_net -d wallet0013/procyon-node-app:1.0 node app.js 200.200.0.3 200.200.0.1:50001" + " &&" +
-					"docker network connect dedicated_net" + nwNumber + " procyon-node-app" + dockerNumber
-				, function(err, stream) {
+				conn.exec(command, function(err, stream) {
 					if (err) throw err;
 					stream.on('close', function(code, signal) {
 						console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
@@ -146,9 +160,9 @@ module.exports = {
 		return new Promise(function (resolve,reject){
 			const conn = new Client();
 			conn.on('ready', function() {
-				// console.log('Client :: ready');
-				// console.log(data);
-				const command = "docker rm -f `docker ps -a -q -f \"name=procyon-node-app*\"`";
+				const command =
+					"docker rm -f `docker ps -a -q -f \"name=procyon-node-app*\"` && " +
+					"docker rm -f `docker ps -a -q -f \"name=procyon-node-syslog*\"`";
 				console.log(command);
 				conn.exec(command, function(err, stream) {
 					if (err) throw err;
@@ -164,7 +178,6 @@ module.exports = {
 					}).stderr.on('data', function(data) {
 						resolve(0);
 						console.log("no container at all");
-						// console.log('STDERR: ' + data);
 					});
 
 				});
@@ -268,7 +281,7 @@ module.exports = {
 				console.log('Client :: ready');
 				conn.exec(
 					"sleep 5 ; " +
-					"docker run --name procyon-node-mongo -e TZ=Asia/Tokyo  --net=mgmt_net --ip 200.200.0.3 -d mongo:3.4.7"
+					"docker run --name procyon-node-mongo -e TZ=Asia/Tokyo  --net=mgmt_net --ip " + mongoIP + " -d mongo:3.4.7"
 					, function(err, stream) {
 					if (err) throw err;
 					stream.on('close', function(code, signal) {
@@ -323,8 +336,6 @@ module.exports = {
 		return new Promise(function (resolve,reject){
 			const conn = new Client();
 			conn.on('ready', function() {
-				// console.log('Client :: ready');
-				// console.log(data);
 				const command = "docker rm -f " + data;
 				console.log(command);
 				conn.exec(command, function(err, stream) {
