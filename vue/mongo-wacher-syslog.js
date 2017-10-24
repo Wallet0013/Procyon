@@ -6,13 +6,13 @@ const url = "mongodb://200.200.0.3:27017/procyon";
 let db;
 let limit;
 
-function getPingCollection() {
+function getSyslogCollection() {
   co(function* (){
     try{
       db = yield MongoClient.connect(url);
-      let pinglog = yield db.collection("ping").find().sort({_id: -1}).limit(limit).toArray()
+      let syslog = yield db.collection("syslog").find().sort({_id: -1}).limit(limit).toArray()
       db.close();
-      process.send(pinglog);
+      process.send(syslog);
     }catch(e){
       console.log(e);
       process.exit();
@@ -23,20 +23,16 @@ function getPingCollection() {
   });
 }
 
-
 process.on("message", function (body) {
   co(function* (){
       console.log("--- get message");
       limit = Number(body.limit);
-      // getPingCollection;
-      setInterval(getPingCollection,body.interval);
+      setInterval(getSyslogCollection,body.interval);
 
   }).catch(function(err){
     process.on('unhandledRejection', console.log(err));
   });
 });
 
-
-
-console.log("--- boot mongo ping watcher");
+console.log("--- boot mongo syslog watcher");
 

@@ -15,9 +15,10 @@ axios.defaults.timeout = 1000;
 let ContainerTableValue = new Array();
 
 let watcher = child_process.fork("./vue/mongo-wacher-ping.js");
+let syslogWatcher = child_process.fork("./vue/mongo-wacher-syslog.js");
 
 
-// print mongo db data process
+// print mongodb ping data process
 function startWatcher() {
   stopWatcher();
   watcher.send({
@@ -33,6 +34,7 @@ function startWatcher() {
       const transResult = yield pingLogConvertor(result);
       LogArea.tableData = transResult;
       LogArea.masterData = LogArea.tableData;
+      analyticsPingLog(transResult);
     }).catch(function(err){
       process.on('unhandledRejection', console.log(err));
     });
@@ -74,6 +76,57 @@ function pingLogConvertor(result){
     }
     resolve(transResult);
   });
+}
+
+
+function analyticsPingLog(data){
+  LogArea.totalPinglog = data.length;
+  let deadcnt = 0;
+  let alivecnt = 0;
+  for(i of data){
+    if(i.alive == "true"){
+      alivecnt++;
+    }else{
+      deadcnt++;
+    }
+  }
+  ///////////////////
+  /// 断時間の計測処理
+  /// for i で -1でfalseの場合、timestammpを引き算して、それをaddしてゆく。
+  /// これをsource destnationの関係で実施する。
+  //////////////////
+
+  LogArea.deadPinglog = deadcnt;
+  LogArea.alivePinglog = alivecnt;
+
+}
+
+
+// print mongodb syslog data process
+function startSyslogWatcher() {
+  stopSyslogWatcher();
+  syslogWatcher.send({
+    interval : LogArea.interval,
+    start : "tes",
+    end : "tes",
+    limit : LogArea.logLimit
+  });
+
+  syslogWatcher.on("message", function (result) {
+    co(function* () {
+      syslogArea.tableSyslogData = result;
+      syslogArea.tableSyslogMasterData = result;
+    }).catch(function(err){
+      process.on('unhandledRejection', console.log(err));
+    });
+  });
+}
+
+function stopSyslogWatcher() {
+  co(function* () {
+    syslogWatcher.kill('SIGKILL');
+    syslogWatcher = child_process.fork("./vue/mongo-wacher-syslog.js");
+  })
 }
 
 function addNetwork(existNW,networkCidr,nodeAdd) {
@@ -481,6 +534,9 @@ const LogArea = new Vue({
       interval:1000,
       logLimit:100,
       logStaticLimit:100,
+      totalPinglog:"",
+      deadPinglog:"",
+      alivePinglog:"",
       filterLogsSource:"",
       filterLogsDestnation:"",
       filterLogsAlive:"",
@@ -492,6 +548,7 @@ const LogArea = new Vue({
             const end = new Date();
             const start = new Date();
             start.setTime(start.getTime() - 3600 * 1000 * 24 * 1);
+            end.setTime(start.getTime() + 3600 * 1000 * 24 * 1);
             picker.$emit('pick', [start, end]);
           }
         }, {
@@ -529,9 +586,17 @@ const LogArea = new Vue({
     ReloadLogArea(){
       co(function* () {
         // console.log(this.logStaticLimit);
-        const result = yield mongo.getPingCollection(LogArea.logStaticLimit);
-        // console.log(result);
-        LogArea.tableData = result;
+        let limit;
+        if(LogArea.logStaticLimit == "all"){
+          limit = undefined;
+        }else{
+          limit = LogArea.logStaticLimit;
+        }
+        const result = yield mongo.getPingCollection(limit);
+        const data = yield pingLogConvertor(result);
+        LogArea.tableData = data;
+        LogArea.masterData = data;
+        analyticsPingLog(data);
       })
     },
   },
@@ -549,7 +614,7 @@ const LogArea = new Vue({
       let find_logs = new Array();
       for(data of TargetData){
         let findFlg = 0;
-        if(data.source.indexOf(this.filterLogsSource) >= 0){ findFlg = 1; console.log("s")}
+        if(data.source.indexOf(this.filterLogsSource) >= 0){ findFlg = 1;}
         // if(data.message.indexOf(this.filterLogsSouce) >= 0){ findFlg = 1; }
 
         if(findFlg >= 1){
@@ -557,6 +622,7 @@ const LogArea = new Vue({
         }
       }
       LogArea.tableData = find_logs;
+      analyticsPingLog(find_logs);
     },
     filterLogsDestnation: function(e){
       // const search_word = this.filterLogs;
@@ -578,6 +644,7 @@ const LogArea = new Vue({
         }
       }
       LogArea.tableData = find_logs;
+      analyticsPingLog(find_logs);
     },
     filterLogsAlive: function(e){
       // const search_word = this.filterLogs;
@@ -587,7 +654,6 @@ const LogArea = new Vue({
         console.log("data");
         return LogArea.tableData = LogArea.masterData;
       }
-
 
       let find_logs = new Array();
       for(data of TargetData){
@@ -599,9 +665,85 @@ const LogArea = new Vue({
         }
       }
       LogArea.tableData = find_logs;
+      analyticsPingLog(find_logs);
     },
     filterLogsTime: function(e){
-      console.log("aaaa");
+      const startTime = moment(e[0]).format();
+      const endTime = moment(e[1]).format();
+      console.log(startTime);
+      console.log(endTime);
+
+      const TargetData = LogArea.masterData;
+
+      if(this.filterLogsTime == ""){
+        console.log("data");
+        return LogArea.tableData = LogArea.masterData;
+      }
+
+      let find_logs = new Array();
+      for(data of TargetData){
+        // let findFlg = 0;
+        // if(data.alive.indexOf(this.filterLogsTime) >= 0){ findFlg = 1; }
+
+        // if(findFlg >= 1){
+        //   find_logs.push(data);
+        // }
+        console.log(data.timestamp);
+      }
+      LogArea.tableData = find_logs;
+      analyticsPingLog(find_logs);
+    }
+  }
+})
+
+const syslogArea = new Vue({
+  el: "#syslogArea",
+  data (){
+    return{
+      MongoSwitch:false,
+      tableSyslogData : [{
+        facility:"",
+        severity:"",
+        tag:"",
+        times:"",
+        hostname:"",
+        address:"",
+        port:"",
+        size:"",
+        msg:""
+      }],
+      tableSyslogMasterData : [{
+        facility:"",
+        severity:"",
+        tag:"",
+        times:"",
+        hostname:"",
+        address:"",
+        port:"",
+        size:"",
+        msg:""
+      }],
+    }
+  },
+  methods: {
+    changeSwitch() {
+      co(function* () {
+        if(syslogArea.MongoSwitch){
+          // LogArea.$el.getElementsByClassName("el-table")[0].hidden = false;
+          try{
+            yield mongo.getStatus();
+            startSyslogWatcher();
+          } catch(e){
+            console.log("failed");
+            nodeTool.$message({message:"failed connecting mongodb",type:"error"});
+            syslogArea.MongoSwitch = false
+          }
+        }
+        else{
+          // LogArea.$el.getElementsByClassName("el-table")[0].hidden = true;
+          stopSyslogWatcher();
+        }
+      })
     }
   }
 })
