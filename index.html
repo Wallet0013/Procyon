@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="./node_modules/element-ui/lib/theme-default/index.css">
     <script src="./node_modules/vue/dist/vue.js"></script>
     <script src="./node_modules/element-ui/lib/index.js"></script>
-    <script src="./node_modules/echarts/index.js"></script>
+    <script src="./node_modules/echarts/dist/echarts.js"></script>
   </head>
   <body>
     <div id=topNav>
@@ -121,6 +121,9 @@
       </el-col>
     </el-row>
     <hr>
+    <div id="AnalyticsArea">
+      <div id="pie-chart" style="width:100%; height:400px; display: inline-block"></div>
+    </div>
     <div id="LogArea">
       <h1>PingLog Viewer</h1>
       <label>RealTime Monitor</label>
@@ -136,7 +139,7 @@
       <el-slider v-model="logLimit" :max="500" :min="1" :step="1" @change="changeSwitch()"></el-slider>
       <label>RealTime Relod Interval msec</label>
       <el-slider v-model="interval" :max="10000" :min="100" :step="100" @change="changeSwitch()"></el-slider>
-      <el-input placeholder="Log Limit" v-model="logStaticLimit" ></el-input>
+      <el-input-number placeholder="Log Limit" v-model="logStaticLimit" ></el-input-number>
       <el-button @click="ReloadLogArea" size="small" type="success" class="button">Reload</el-button>
       <p>Filter</p>
       <el-input placeholder="Source" v-model="filterLogsSource"></el-input>

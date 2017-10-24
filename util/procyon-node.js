@@ -12,10 +12,14 @@ const machine = vagrant.create({ cwd: vagrantfile, env: process.env });
 const ssh_config = {
 			  host: '200.200.0.2',
 			  port: 22,
-			  username: 'rancher',
-			  password: 'rancher'
+			  username: 'vagrant',
+			  password: 'vagrant'
 			};
 const mongoIP = "200.200.0.3";
+
+
+// define mongo docker
+const mongoApp = "mongo:3.4.7";
 
 module.exports = {
 	getStatus : function getStatus() {
@@ -57,8 +61,8 @@ module.exports = {
 			conn.on('ready', function() {
 				// console.log('Client :: ready');
 				conn.exec(
-					"docker inspect -f '{{.NetworkSettings.Networks.mgmt_net.IPAddress}}'" + " procyon-node-" + type + dockerNumber + " &&" +
-					"docker inspect -f '{{.NetworkSettings.Networks."  + "dedicated_net" + nwNumber + ".IPAddress}}'" + " procyon-node-" + type + dockerNumber
+					"sudo docker inspect -f '{{.NetworkSettings.Networks.mgmt_net.IPAddress}}'" + " procyon-node-" + type + dockerNumber + " &&" +
+					"sudo docker inspect -f '{{.NetworkSettings.Networks."  + "dedicated_net" + nwNumber + ".IPAddress}}'" + " procyon-node-" + type + dockerNumber
 				, function(err, stream) {
 					if (err) throw err;
 					stream.on('close', function(code, signal) {
@@ -120,15 +124,15 @@ module.exports = {
 			switch (type) {
 				case "app":
 					command =
-						"docker run --name procyon-node-app" + dockerNumber + " -e TZ=Asia/Tokyo --net=mgmt_net -d wallet0013/procyon-node-app:1.0 node app.js " + mongoIP + " 200.200.0.1:50001" + " &&" +
-						"docker network connect dedicated_net" + nwNumber + " procyon-node-app" + dockerNumber;
+						"sudo docker run --name procyon-node-app" + dockerNumber + " -e TZ=Asia/Tokyo --net=mgmt_net -d wallet0013/procyon-node-app:1.0 node app.js " + mongoIP + " 200.200.0.1:50001" + " &&" +
+						"sudo docker network connect dedicated_net" + nwNumber + " procyon-node-app" + dockerNumber;
 					break;
 
 				case "syslog":
 					portNumber = "514";
 					command =
-						"docker run --name procyon-node-syslog" + dockerNumber + " -e TZ=Asia/Tokyo --net=mgmt_net -d wallet0013/procyon-node-syslog:1.0 node index.js " + portNumber + " " + mongoIP + " &&" +
-						"docker network connect dedicated_net" + nwNumber + " procyon-node-syslog" + dockerNumber;
+						"sudo docker run --name procyon-node-syslog" + dockerNumber + " -e TZ=Asia/Tokyo --net=mgmt_net -d wallet0013/procyon-node-syslog:1.0 node index.js " + portNumber + " " + mongoIP + " &&" +
+						"sudo docker network connect dedicated_net" + nwNumber + " procyon-node-syslog" + dockerNumber;
 					break;
 			}
 
@@ -161,8 +165,8 @@ module.exports = {
 			const conn = new Client();
 			conn.on('ready', function() {
 				const command =
-					"docker rm -f `docker ps -a -q -f \"name=procyon-node-app*\"` && " +
-					"docker rm -f `docker ps -a -q -f \"name=procyon-node-syslog*\"`";
+					"sudo docker rm -f `docker ps -a -q -f \"name=procyon-node-app*\"` && " +
+					"sudo docker rm -f `docker ps -a -q -f \"name=procyon-node-syslog*\"`";
 				console.log(command);
 				conn.exec(command, function(err, stream) {
 					if (err) throw err;
@@ -211,9 +215,9 @@ module.exports = {
 
 			let command;
 			if(range){
-				command = "sudo docker network create --driver macvlan --subnet=" + ip + " --gateway=" + gateway + " --ip-range=" + range + " -o parent=eth1 dedicated_net" + number + " ; sleep 5"
+				command = "sudo docker network create --driver macvlan --subnet=" + ip + " --gateway=" + gateway + " --ip-range=" + range + " -o parent=enp0s8 dedicated_net" + number + " ; sleep 5"
 			}else{
-				command = "sudo docker network create --driver macvlan --subnet=" + ip + " --gateway=" + gateway + " -o parent=eth1 dedicated_net" + number + " ; sleep 5"
+				command = "sudo docker network create --driver macvlan --subnet=" + ip + " --gateway=" + gateway + " -o parent=enp0s8 dedicated_net" + number + " ; sleep 5"
 			}
 
 			// create network
@@ -247,13 +251,12 @@ module.exports = {
 			conn.on('ready', function() {
 				console.log('Client :: ready');
 				conn.exec(
-					"sudo ip link del docker0 ; sudo ip link del docker-sys && " +
-					"sudo ip link set eth0 down && " +
-					"sudo ros config set rancher.network.interfaces.eth1.address " + ip + " && " +
-					"sudo ros config set rancher.network.interfaces.eth1.gateway " + gateway + " && " +
-					// "sudo ros config set rancher.network.interfaces.eth0.address 0.0.0.0 && " +
-					"sudo system-docker restart network && " +
-					"docker network create --driver=macvlan --subnet=200.200.0.0/16 --ip-range=200.200.128.0/17 -o parent=eth2 mgmt_net"
+					"sudo ip link del docker0 && " +
+					"sudo ip link set enp0s3 down && " +
+					"sudo ip addr del 10.10.10.10/24 dev enp0s8 &&" +
+					"sudo ip addr add " + ip + " dev enp0s8 && " +
+					"sudo ip route add default via " + gateway + " &&" +
+					"sudo docker network create --driver=macvlan --subnet=200.200.0.0/16 --ip-range=200.200.128.0/17 -o parent=enp0s9 mgmt_net"
 				, function(err, stream) {
 					if (err) {
 						throw err;
@@ -280,8 +283,8 @@ module.exports = {
 			conn.on('ready', function() {
 				console.log('Client :: ready');
 				conn.exec(
-					"sleep 5 ; " +
-					"docker run --name procyon-node-mongo -e TZ=Asia/Tokyo  --net=mgmt_net --ip " + mongoIP + " -d mongo:3.4.7"
+					"sleep 3 ; " +
+					"sudo docker run --name procyon-node-mongo -e TZ=Asia/Tokyo  --net=mgmt_net --ip " + mongoIP + " -d " + mongoApp
 					, function(err, stream) {
 					if (err) throw err;
 					stream.on('close', function(code, signal) {
@@ -305,9 +308,9 @@ module.exports = {
 			conn.on('ready', function() {
 				console.log('Client :: ready');
 				conn.exec(
-					"sudo ros config set rancher.network.interfaces.eth1.address " + ip + " && " +
-					"sudo ros config set rancher.network.interfaces.eth1.gateway " + gateway + " && " +
-					"sudo system-docker restart network"
+					"sudo ip addr del 10.10.10.10/24 dev enp0s8 &&" +
+					"sudo ip addr add " + ip + " dev enp0s8 && " +
+					"sudo ip route add default via " + gateway
 				, function(err, stream) {
 					if (err) throw err;
 					stream.on('close', function(code, signal) {

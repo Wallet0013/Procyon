@@ -1,43 +1,20 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-require_relative 'vagrant_rancheros_guest_plugin.rb'
-
-$number_of_nodes = 1
-$vm_cpu = 1
-$vm_mem = "1024"
-$vb_gui = false
-
 Vagrant.configure(2) do |config|
-  config.vm.box = "wallet0013/Procyon-node"
-  # config.vm.box_version = "1.1"
-  # config.vm.box   = "procyon_node"
-  config.ssh.username = "rancher"
-  config.ssh.password = "rancher"
-  # config.vm.network "public_network" ,ip: "10.10.10.10", bridge: 'en4: iPhone USB'
-  config.vm.network "public_network" ,ip: "10.10.10.10", bridge: 'en0: Wi-Fi (AirPort)'
-  config.vm.network "private_network" ,ip: "200.200.0.2",:netmask => "255.255.0.0"
-
-  (1..$number_of_nodes).each do |i|
-    hostname = "Procyon-node-%02d" % i
-    config.vm.guest = :linux
-    config.vm.define hostname do |node|
-        node.vm.provider "virtualbox" do |vb|
-            vb.name = "procyon_node"
-            vb.cpus = 2
-            vb.memory = $vm_mem
-            vb.gui = $vb_gui
-            vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
-            vb.customize ['modifyvm', :id, '--nictype2', 'Am79C973']
-            vb.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"]
-            vb.customize ['modifyvm', :id, '--nictype3', 'Am79C973']
-        end
-        node.vm.hostname = hostname
-        # Disabling compression because OS X has an ancient version of rsync installed.
-        # Add -z or remove rsync__args below if you have a newer version of rsync on your machine.
-        node.vm.synced_folder ".", "/opt/rancher", type: "rsync",
-            rsync__exclude: ".git/", rsync__args: ["--verbose", "--archive", "--delete", "--copy-links"],
-            disabled: true
-    end
-  end
+	config.vm.box = "procyon_node_base"
+	config.ssh.username = "vagrant"
+	config.ssh.password = "vagrant"
+	# config.vm.network "public_network" ,ip: "10.10.10.10", bridge: 'en4: iPhone USB'
+	config.vm.network "public_network" ,ip: "10.10.10.10", bridge: 'en0: Wi-Fi (AirPort)'
+	config.vm.network "private_network" ,ip: "200.200.0.2",:netmask => "255.255.0.0"
+	config.vm.provider "virtualbox" do |vb|
+		vb.name = "procyon_node"
+		vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
+		# vb.customize ['modifyvm', :id, '--nictype2', 'Am79C973']
+		vb.customize ['modifyvm', :id, '--nictype2', '82545EM']
+		vb.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"]
+		# vb.customize ['modifyvm', :id, '--nictype3', 'Am79C973']
+		vb.customize ['modifyvm', :id, '--nictype3', '82545EM']
+	end
 end

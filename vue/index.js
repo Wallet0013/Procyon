@@ -9,6 +9,7 @@ const BigNumber     = require("bignumber.js");
 
 const mongo         = require("./util/mongo");
 const procyon_node  = require("./util/procyon-node");
+const analytics     = require("./vue/analytics");
 
 axios.defaults.timeout = 1000;
 
@@ -180,7 +181,12 @@ const nodeTool = new Vue ({
 
         nodeTool.$message("Booting Procyon node! Please wait about 3 minutes");
         const MachineStatus = yield procyon_node.getMachineStatus();
-        const status = MachineStatus["Procyon-node-01"].status
+        let status;
+        if(MachineStatus["procyon_node"] == undefined){
+          status = undefined;
+        }else{
+          status = MachineStatus["procyon-node"].status
+        }
         if( status == "running"){
           nodeTool.$message({message:"Procyon node is already running.",type:"warning"});
           nodeTool.bootnodeDisabled = false; // release boot button

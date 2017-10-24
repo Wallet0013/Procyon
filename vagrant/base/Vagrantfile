@@ -1,0 +1,34 @@
+Vagrant.configure("2") do |config|
+
+    config.vm.box = "bento/ubuntu-16.04"
+    config.vm.box_version = "201708.22.0"
+
+    config.vm.hostname = "procyon-node"
+    config.vm.provider "virtualbox" do |vb|
+        vb.name = "procyon_node_base"
+    end
+
+    config.vm.provision "shell", inline: "apt-get update"
+    # timezone
+    config.vm.provision "shell", inline: "timedatectl set-timezone Asia/Tokyo"
+
+    # docker
+    config.vm.provision "shell", inline: "apt-get install -y apt-transport-https ca-certificates curl software-properties-common"
+    config.vm.provision "shell", inline: "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -"
+    config.vm.provision "shell", inline: "apt-key fingerprint 0EBFCD88"
+    config.vm.provision "shell", inline: "add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\""
+    config.vm.provision "shell", inline: "apt-get update"
+    config.vm.provision "shell", inline: "apt-get -y install docker-ce"
+
+    # stop ufw
+    config.vm.provision "shell", inline: "systemctl stop ufw && systemctl disable ufw"
+
+    # install chrony
+    config.vm.provision "shell", inline: "apt-get -y install chrony"
+
+    # docker pull
+    config.vm.provision "shell", inline: "docker pull wallet0013/procyon-node-app:1.0"
+    config.vm.provision "shell", inline: "docker pull wallet0013/procyon-node-syslog:1.0"
+    config.vm.provision "shell", inline: "docker pull mongo:3.4.7"
+
+end
