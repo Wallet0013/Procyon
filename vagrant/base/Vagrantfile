@@ -31,4 +31,8 @@ Vagrant.configure("2") do |config|
     config.vm.provision "shell", inline: "docker pull wallet0013/procyon-node-syslog:1.0"
     config.vm.provision "shell", inline: "docker pull mongo:3.4.7"
 
+    # slim box
+    config.vm.provision "shell", inline: "sudo dd if=/dev/zero of=/EMPTY bs=1M"
+    config.vm.provision "shell", inline: "sudo rm -f /EMPTY"
+
 end
