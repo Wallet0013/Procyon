@@ -1,4 +1,4 @@
-const chart = require('echarts');
+import chart          from 'echarts';
 
 var pieChart = chart.init(document.getElementById('pie-chart')); // 表示する場所のID
 

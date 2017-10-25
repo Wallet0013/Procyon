@@ -1,22 +1,25 @@
-const co            = require('co');
-const moment        = require("moment");
-const ipaddr        = require("ip");
-const axios         = require("axios");
-const promiseRetry  = require('promise-retry');
-const child_process = require("child_process");
-const BigNumber     = require("bignumber.js");
+import co             from "co";
+import moment         from "moment";
+import ipaddr         from "ip";
+import axios          from "axios";
+import promiseRetry   from "promise-retry";
+import child_process  from "child_process";
+import BigNumber      from "bignumber.js";
 
+import mongo          from "./util/mongo";
+import procyon_node   from "./util/procyon-node"; // load vagrant util
+import message        from "./util/message";
 
-const mongo         = require("./util/mongo");
-const procyon_node  = require("./util/procyon-node");
-const analytics     = require("./vue/analytics");
+// load vue
+import lib_node       from "./lib/lib-node";
+import analytics      from "./analytics";
 
 axios.defaults.timeout = 1000;
 
 let ContainerTableValue = new Array();
 
-let watcher = child_process.fork("./vue/mongo-wacher-ping.js");
-let syslogWatcher = child_process.fork("./vue/mongo-wacher-syslog.js");
+let watcher = child_process.fork("./vue/watcher/mongo-wacher-ping.js");
+let syslogWatcher = child_process.fork("./vue/watcher/mongo-wacher-syslog.js");
 
 
 // print mongodb ping data process
@@ -45,7 +48,7 @@ function startWatcher() {
 function stopWatcher() {
   co(function* () {
     watcher.kill('SIGKILL');
-    watcher = child_process.fork("./vue/mongo-wacher-ping.js");
+    watcher = child_process.fork("./vue/watcher/mongo-wacher-ping.js");
   })
 }
 
@@ -126,7 +129,7 @@ function startSyslogWatcher() {
 function stopSyslogWatcher() {
   co(function* () {
     syslogWatcher.kill('SIGKILL');
-    syslogWatcher = child_process.fork("./vue/mongo-wacher-syslog.js");
+    syslogWatcher = child_process.fork("./vue/wacher/mongo-wacher-syslog.js");
   })
 }
 
@@ -138,7 +141,7 @@ function addNetwork(existNW,networkCidr,nodeAdd) {
         const nwNumber = yield mongo.getNetworknewnumber();
         if (nodeAdd.form.vlan){
           // is specific vlan
-          yield nodeTool.$message("add network with vlan " + nodeAdd.form.vlan);
+          message.showNotification("add network with vlan " + nodeAdd.form.vlan,"info");
           /////////////
           ///// ここをvlanのコンフィグにするーー
           /////////////
@@ -159,97 +162,6 @@ function addNetwork(existNW,networkCidr,nodeAdd) {
   });
 }
 
-const nodeTool = new Vue ({
-  el: "#nodeTool",
-  data : {
-  },
-  data() {
-    return {
-      nodeIP:'172.20.10.2/24',
-      nodeGateway:'172.20.10.1',
-      bootnodeDisabled:false,
-      DisableInput:false,
-      dialogVisible:false,
-    }
-  },
-  methods : {
-    bootNode() {
-      co(function* () {
-        containerTable.flushArptable();   // flush arp table;
-        nodeTool.bootnodeDisabled = true; // lock boot button
-        nodeTool.DisableInput = true;
-
-        nodeTool.$message("Booting Procyon node! Please wait about 3 minutes");
-        const MachineStatus = yield procyon_node.getMachineStatus();
-        let status;
-        if(MachineStatus["procyon_node"] == undefined){
-          status = undefined;
-        }else{
-          status = MachineStatus["procyon-node"].status
-        }
-        if( status == "running"){
-          nodeTool.$message({message:"Procyon node is already running.",type:"warning"});
-          nodeTool.bootnodeDisabled = false; // release boot button
-        } else{
-          let bootcnt = 180;
-          const bootTimer = setInterval( () =>{
-            bootcnt--;
-            nodeTool.$message("Booting Timer " + bootcnt + " secounds");
-          }, 1000);
-          yield procyon_node.bootNode();
-
-          // retry
-          yield promiseRetry({
-            retries: 5,
-            factor: 3,
-            minTimeout: 1 * 1000,
-            maxTimeout: 10 * 1000
-          },function (retry, number) {
-            console.log('attempt number', number);
-            return procyon_node.setMgmt(nodeTool.nodeIP,nodeTool.nodeGateway)
-            // .catch(retry);
-            .catch(function (err) {
-                if (err.code === 'ETIMEDOUT') {
-                    retry(err);
-                    console.log("ssh error");
-                }
-                throw err;
-            });
-          })
-          .then(function (value) {
-            procyon_node.setMongo();
-            nodeTool.bootnodeDisabled = false;
-            clearInterval(bootTimer);
-          }, function (err) {
-            console.log("error");
-          });
-
-          /////// ツールボックスを開放
-
-        }
-      });
-    },
-    setAddress() {
-      nodeTool.$message("Set ip address to Procyon node");
-      procyon_node.setAddress(nodeTool.nodeIP,nodeTool.nodeGateway);
-    },
-    getVersion() {
-      nodeTool.$message("Get vagrant version");
-      procyon_node.getVersion();
-    },
-    haltNode() {
-      nodeTool.$message("kill node");
-      procyon_node.haltNode();
-
-    },
-    deleteNode() {
-      nodeTool.dialogVisible = false;
-      nodeTool.$message("Delete Procyon node");
-      procyon_node.deleteNode();
-    }
-  }
-})
-
 const topNav = new Vue({
   el : "#topNav",
   data() {
@@ -267,9 +179,6 @@ const topNav = new Vue({
 
 const nodeAdd = new Vue ({
   el: "#nodeAdd",
-  data : {
-
-  },
   data() {
     return {
       form:{
@@ -397,14 +306,14 @@ const containerTable = new Vue({
       co(function* () {
         yield procyon_node.flushContainer();
         yield mongo.flushDcokerNW();
-        nodeTool.$message({message:"flush app",type:"warning"});
+        message.showNotification("flush app","warning");
         ContainerTableValue = new Array();
         containerTable.containerData = ContainerTableValue;
         ResultArea.AppData = ContainerTableValue;
       });
     },
     flushArptable(){
-      nodeTool.$message({message:"flush arp is require plivilede",type:"warning"});
+      message.showNotification("flush arp is require plivilede","warning");
       procyon_node.flushArptable();
     }
   },
