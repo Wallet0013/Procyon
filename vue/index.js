@@ -6,13 +6,22 @@ import promiseRetry   from "promise-retry";
 import child_process  from "child_process";
 import BigNumber      from "bignumber.js";
 
+// element ui
+import Vue            from 'vue'
+import ElementUI      from 'element-ui'
+import locale         from 'element-ui/lib/locale/lang/ja'
+import 'element-ui/lib/theme-default/index.css'
+Vue.use(ElementUI, {locale});
+
+
+
 import mongo          from "./util/mongo";
 import procyon_node   from "./util/procyon-node"; // load vagrant util
-import message        from "./util/message";
-
-// load vue
+import { messageArea }  from "./util/message";
 import lib_node       from "./lib/lib-node";
 import analytics      from "./analytics";
+
+
 
 axios.defaults.timeout = 1000;
 
@@ -141,16 +150,21 @@ function addNetwork(existNW,networkCidr,nodeAdd) {
         const nwNumber = yield mongo.getNetworknewnumber();
         if (nodeAdd.form.vlan){
           // is specific vlan
-          message.showNotification("add network with vlan " + nodeAdd.form.vlan,"info");
+          messageArea.$message({message:"add network with vlan " + nodeAdd.form.vlan,type:"info"});
+
           /////////////
           ///// ここをvlanのコンフィグにするーー
           /////////////
           resolve(0);
         } else{
           // is not specific vlan
-          nodeTool.$message("add network with native vlan");
+          messageArea.$message({message:"add network with native vlan",type:"info"});
           console.log("add network with native vlan");
-          ////////////// check duplicate eth
+
+          /////////////
+          //// check duplicate eth
+          /////////////
+
           resolve(yield procyon_node.addNetwork_novlan(nwNumber,networkCidr,nodeAdd.form.IPrange,nodeAdd.form.gateway,nodeAdd.form.exclude));
         }
       }else{
@@ -175,7 +189,6 @@ const topNav = new Vue({
     }
   }
 })
-
 
 const nodeAdd = new Vue ({
   el: "#nodeAdd",
@@ -213,7 +226,14 @@ const nodeAdd = new Vue ({
 
         // run app container
         nwNumber = yield mongo.getNetworkID(networkCidr);
-        let dockerValue = yield procyon_node.runDocker(nwNumber,dockerNumber,type);
+        let dockerValue
+        try{
+          dockerValue = yield procyon_node.runDocker(nwNumber,dockerNumber,type);
+        } catch(e){
+          console.log("err : " + e);
+          console.log("faild command 'docker run'.");
+          nodeAdd.addappDisabled = false;
+        }
 
         // insert docker info to mongo
         const tmp = yield procyon_node.getDockerNetwork(nwNumber,dockerNumber,type);
@@ -305,15 +325,17 @@ const containerTable = new Vue({
     flushContainer(){
       co(function* () {
         yield procyon_node.flushContainer();
-        yield mongo.flushDcokerNW();
-        message.showNotification("flush app","warning");
+        yield mongo.flushContainer();
+        yield procyon_node.flushDockerNW();
+        yield mongo.flushDockerNW();
+        messageArea.$message({message:"Flush All app.",type:"warning"});
         ContainerTableValue = new Array();
         containerTable.containerData = ContainerTableValue;
         ResultArea.AppData = ContainerTableValue;
       });
     },
     flushArptable(){
-      message.showNotification("flush arp is require plivilede","warning");
+      messageArea.$message({message:"flush arp is require plivilede",type:"warning"});
       procyon_node.flushArptable();
     }
   },
@@ -344,7 +366,7 @@ const ResultArea = new Vue ({
   methods: {
     startPing(data,index){
       if (data.targetip == undefined){
-        nodeTool.$message({message:"Target ip is null",type:"error"});
+        messageArea.$message({message:"Target ip is null",type:"error"});
         return 127;
       }
       const status = true;
@@ -357,12 +379,12 @@ const ResultArea = new Vue ({
       })
       .then(res => {
         this.sending = false
-        nodeTool.$message({message:"success ping request ",type:"info"});
+        messageArea.$message({message:"success ping request.",type:"info"});
         console.log(res.status, res.statusText, res.data)
       })
       .catch(error => {
         this.sending = false
-        nodeTool.$message({message:"fail ping request",type:"error"});
+        messageArea.$message({message:"fail ping request",type:"info"});
         throw error
       })
     },
@@ -372,19 +394,20 @@ const ResultArea = new Vue ({
       axios.post("http://" + data.management_ip + ":50001/stop_ping")
       .then(res => {
         this.sending = false
-        nodeTool.$message({message:"success stopping ping request ",type:"info"});
+        messageArea.$message({message:"success stopping ping request.",type:"info"});
         console.log(res.status, res.statusText, res.data)
       })
       .catch(error => {
         this.sending = false
-        nodeTool.$message({message:"fail ping request",type:"error"});
+        messageArea.$message({message:"fail ping request.",type:"info"});
+
         throw error
       })
     },
     startTraceroute(data,index){
       console.log(this.$el.children[index].color);
       if (data.targetip == undefined){
-        nodeTool.$message({message:"Target ip is null",type:"error"});
+        messageArea.$message({message:"Target ip is null",type:"error"});
         return 127;
       }
       const status = true;
@@ -396,14 +419,12 @@ const ResultArea = new Vue ({
       })
       .then(res => {
         this.sending = false
-        nodeTool.$message({message:"success traceroute request ",type:"info"});
-        console.log(res.status, res.statusText, res.data)
-        // console.log(this);
+        messageArea.$message({message:"Success traceroute request.",type:"info"});
+        // console.log(res.status, res.statusText, res.data)
       })
       .catch(error => {
         this.sending = false
-        nodeTool.$message({message:"fail traceroute request",type:"error"});
-
+        messageArea.$message({message:"fail traceroute request",type:"error"});
         throw error
       })
     },
@@ -412,7 +433,7 @@ const ResultArea = new Vue ({
         const dockerName = yield mongo.getDockerName(data.service_ip);
         yield procyon_node.deleteContainer(dockerName);
         yield mongo.deleteDockerNW(dockerName);
-        nodeTool.$message({message:"delete app",type:"warning"});
+        messageArea.$message({message:"Delete app",type:"info"});
         for(i=0; i<ContainerTableValue.length; i++){
             if(ContainerTableValue[i].management_ip == data.management_ip){
                 ContainerTableValue.splice(i, 1);
@@ -488,8 +509,8 @@ const LogArea = new Vue({
             startWatcher();
           } catch(e){
             console.log("failed");
-            nodeTool.$message({message:"failed connecting mongodb",type:"error"});
-            LogArea.MongoSwitch=false
+            messageArea.$message({message:"Fail connecting mongodb.",type:"error"});
+            LogArea.MongoSwitch = false;
           }
         }
         else{
@@ -500,7 +521,6 @@ const LogArea = new Vue({
     },
     ReloadLogArea(){
       co(function* () {
-        // console.log(this.logStaticLimit);
         let limit;
         if(LogArea.logStaticLimit == "all"){
           limit = undefined;

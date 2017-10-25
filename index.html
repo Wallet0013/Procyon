@@ -3,9 +3,6 @@
   <head>
     <meta charset="UTF-8">
     <title>Procyon</title>
-    <link rel="stylesheet" href="./node_modules/element-ui/lib/theme-default/index.css">
-    <script src="./node_modules/vue/dist/vue.js"></script>
-    <script src="./node_modules/element-ui/lib/index.js"></script>
     <script src="./node_modules/echarts/dist/echarts.js"></script>
   </head>
   <body>
@@ -34,11 +31,11 @@
         <el-form-item label="Gateway">
           <el-input placeholder="Gateway : 192.168.1.1" v-model="nodeGateway" v-bind:disabled="DisableInput"> </el-input>
         </el-form-item>
-        <el-form-item label="NTP">
-          <el-input placeholder="NTP : ntp.ntp.nict.jp" v-model="nodeNTP" v-bind:disabled="DisableInput"> </el-input>
+        <el-form-item label="NTP (both client and sever)">
+          <el-input placeholder="NTP : ntp.nict.jp" v-model="nodeNTP"> </el-input>
         </el-form-item>
         <el-button type="primary" @click="bootNode" v-bind:disabled="bootnodeDisabled">Boot Node</el-button>
-        <el-button type="primary" @click="setNTP" v-bind:disabled="bootnodeDisabled">Set NTP</el-button>
+        <el-button type="primary" @click="setNTP" v-bind:disabled="ntpDisable">Set NTP</el-button>
         <!-- <el-button type="primary" @click="setAddress">Reset IP</el-button> -->
         <el-button type="info" @click="getVersion">GetVersion</el-button>
         <el-button type="danger" @click="dialogVisible = true">DeleteNode</el-button>
@@ -281,5 +278,5 @@
     </div>
 
   </body>
-<script src="./bundle.js"></script>
+<script src="./dist/bundle.js"></script>
 </html>

@@ -72,18 +72,15 @@ module.exports = {
 			co(function* () {
 				const db = yield MongoClient.connect(url);
 
-				// docker numberのラストを受け取る
+				// get last docker number
 				const result = yield db.collection("networks").find({ip:value}).toArray();
 				yield db.close();
-				// console.log(result.length);
-				// console.log(result);
 				if(result.length == 1){
 					resolve(result[0].network_id);
 				} else if (result.length == 0){
-					console.log("00000だよ");
+					// if there is not exist network
 					resolve("00000");
 				} else{
-					// console.log("too many　の result ", result);
 					reject("error the network too many");
 
 				}
@@ -276,13 +273,31 @@ module.exports = {
 
 		});
 	},
-	flushDcokerNW : function flushDcokerNW() {
+	flushContainer : function flushContainer() {
 		return new Promise(function (resolve,reject){
 			co(function* () {
 				const db = yield MongoClient.connect(url);
 
 				const result = yield db.collection("container").remove();
-				console.log("all datas is removed in container collection");
+				console.log("all datas is removed in `container` collection");
+				yield db.close();
+
+
+				resolve(0);
+
+			}).catch(function(err){
+				process.on('unhandledRejection', console.log(err));
+			});
+
+		});
+	},
+	flushDockerNW : function flushDockerNW() {
+		return new Promise(function (resolve,reject){
+			co(function* () {
+				const db = yield MongoClient.connect(url);
+
+				const result = yield db.collection("networks").remove();
+				console.log("all datas is removed in `networks` collection");
 				yield db.close();
 
 

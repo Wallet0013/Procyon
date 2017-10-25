@@ -12,8 +12,10 @@
     "axios": "^0.16.2",
     "bignumber.js": "^4.1.0",
     "co": "^4.6.0",
+    "css-loader": "^0.28.7",
     "echarts": "^3.7.2",
     "element-ui": "^1.4.6",
+    "file-loader": "^1.1.5",
     "ip": "^1.1.5",
     "moment": "^2.19.0",
     "mongodb": "^2.2.31",
@@ -23,8 +25,10 @@
     "promise-retry": "^1.1.1",
     "ssh2": "^0.5.5",
     "string": "^3.3.3",
+    "style-loader": "^0.19.0",
     "sudo-prompt": "^7.1.1",
     "vue": "^2.4.4",
+    "vue-loader": "^13.3.0",
     "webpack": "^3.7.1"
   }
 }

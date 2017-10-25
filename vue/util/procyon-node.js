@@ -1,12 +1,14 @@
-const vagrant 		= require('node-vagrant');
-const Client		= require('ssh2').Client;
-const vagrantfile 	= "./vagrant/";
-const mongo         = require("./mongo");
-const moment        = require("moment");
-const sudo 			= require('sudo-prompt');
-const os 			= require('os');
-const S 			= require('string');
+import ssh2		from 'ssh2';
+import mongo         from "./mongo";
+import vagrant from "node-vagrant";
+import moment from "moment";
+import sudo from 'sudo-prompt';
+import os from 'os';
+import S from 'string';
 
+const Client = ssh2.Client;
+
+const vagrantfile 	= "./vagrant/";
 const machine = vagrant.create({ cwd: vagrantfile, env: process.env });
 
 const ssh_config = {
@@ -18,49 +20,47 @@ const ssh_config = {
 const mongoIP = "200.200.0.3";	// define mongo ip addr
 const mongoApp = "mongo:3.4.7";	// define mongo docker
 
-module.exports = {
-	getStatus : function getStatus() {
+
+
+export default {
+	getStatus() {
 		return new Promise(function (resolve,reject){
 			vagrant.globalStatus('--prune',function(err,out){
-				nodeTool.$message({message:err+ out,type:"warning"});
 				console.log("get status",err, out);
 				resolve(out);
 			})
 		});
 	},
-	getMachineStatus : function getMachineStatus() {
+	getMachineStatus() {
 		return new Promise(function (resolve,reject){
 			machine.status(function(err,out){
-				// nodeTool.$message({message:err+ out,type:"warning"});
 				// console.log(err, out);
 				resolve(out);
 			})
 		});
 	},
-	getVersion : function getVersion() {
+	getVersion(callback) {
 		return new Promise(function (resolve,reject){
 			vagrant.version(function(err,out){
-				console.log(err, out);
+				// console.log(err, out);
 				// split first row
-				nodeTool.$message({message:out.split(/\r\n|\r|\n/)[0],type:"info"});
-				const h = nodeTool.$createElement;
+				resolve(out);
+				callback();
 
 			})
-			resolve(0);
 		});
 	},
-	getDockerNetwork : function getDockerNetwork(nwNumber,dockerNumber,type) {
+	getDockerNetwork(nwNumber,dockerNumber,type) {
 		return new Promise(function (resolve,reject){
-
 			let value;
+			const command =
+				"sudo docker inspect -f '{{.NetworkSettings.Networks.mgmt_net.IPAddress}}'" + " procyon-node-" + type + dockerNumber + " &&" +
+				"sudo docker inspect -f '{{.NetworkSettings.Networks."  + "dedicated_net" + nwNumber + ".IPAddress}}'" + " procyon-node-" + type + dockerNumber;
 
 			const conn = new Client();
 			conn.on('ready', function() {
 				// console.log('Client :: ready');
-				conn.exec(
-					"sudo docker inspect -f '{{.NetworkSettings.Networks.mgmt_net.IPAddress}}'" + " procyon-node-" + type + dockerNumber + " &&" +
-					"sudo docker inspect -f '{{.NetworkSettings.Networks."  + "dedicated_net" + nwNumber + ".IPAddress}}'" + " procyon-node-" + type + dockerNumber
-				, function(err, stream) {
+				conn.exec( command , function(err, stream) {
 					if (err) throw err;
 					stream.on('close', function(code, signal) {
 						conn.end();
@@ -74,6 +74,7 @@ module.exports = {
 						}
 						console.log('STDOUT: ' + data);
 					}).stderr.on('data', function(data) {
+						reject('STDERR: ' + data);
 						console.log('STDERR: ' + data);
 					});
 
@@ -81,10 +82,9 @@ module.exports = {
 			}).connect(ssh_config);
 		});
 	},
-	haltNode : function haltNode() {
+	haltNode() {
 		return new Promise(function (resolve,reject){
 			machine.halt(function (err, out) {
-				nodeTool.$message({message:"shutdown node",type:"info"});
 				if (err) {
 					throw new Error(err);
 				}
@@ -92,10 +92,9 @@ module.exports = {
 			});
 		});
 	},
-	bootNode : function bootNode(callback) {
+	bootNode(callback) {
 		return new Promise(function (resolve,reject){
 			machine.up(function (err, out) {
-				console.log("booted");
 				if (err) {
 					throw new Error(err);
 				}
@@ -104,7 +103,7 @@ module.exports = {
 			});
 		});
 	},
-	runDocker : function runDocker(nwNumber,dockerNumber,type) {
+	runDocker(nwNumber,dockerNumber,type) {
 		return new Promise(function (resolve,reject){
 			const value = {
 				docker_id : dockerNumber,
@@ -135,20 +134,15 @@ module.exports = {
 
 			const conn = new Client();
 			conn.on('ready', function() {
-				// console.log('Client :: ready');
 				conn.exec(command, function(err, stream) {
 					if (err) throw err;
 					stream.on('close', function(code, signal) {
-						console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
+						// console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
 						conn.end();
-
-						if(code == 0){
-							resolve(value);
-
-						}
+						if(code == 0){ resolve(value); }
 					}).on('data', function(data) {
-						nodeTool.$message({message:"created app",type:"info"});
-						console.log('STDOUT: ' + data);
+						console.log("return data is :" + data);
+						// messageArea.$message({message:"Created app : " + data,type:"info"});
 					}).stderr.on('data', function(data) {
 						console.log('STDERR: ' + data);
 					});
@@ -157,13 +151,38 @@ module.exports = {
 			}).connect(ssh_config);
 		});
 	},
-	flushContainer : function flushContainer(data) {
+	flushDockerNW(data) {
 		return new Promise(function (resolve,reject){
+			const command =
+				"sudo docker network rm `sudo docker network ls -q -f \"name=dedicated_net*\"`";
 			const conn = new Client();
 			conn.on('ready', function() {
-				const command =
-					"sudo docker rm -f `docker ps -a -q -f \"name=procyon-node-app*\"` && " +
-					"sudo docker rm -f `docker ps -a -q -f \"name=procyon-node-syslog*\"`";
+				console.log(command);
+				conn.exec(command, function(err, stream) {
+					if (err) throw err;
+					stream.on('close', function(code, signal) {
+						console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
+						conn.end();
+					}).on('data', function(data) {
+						console.log('STDOUT: ' + data);
+						resolve(0);
+					}).stderr.on('data', function(data) {
+						resolve(0);
+						console.log("No Docker Netwrok at all");
+					});
+
+				});
+			}).connect(ssh_config);
+		});
+	},
+	flushContainer(data) {
+		return new Promise(function (resolve,reject){
+			const command =
+				"sudo docker rm -f `sudo docker ps -a -q -f \"name=procyon-node-app*\"` && " +
+				"sudo docker rm -f `sudo docker ps -a -q -f \"name=procyon-node-syslog*\"`";
+
+			const conn = new Client();
+			conn.on('ready', function() {
 				console.log(command);
 				conn.exec(command, function(err, stream) {
 					if (err) throw err;
@@ -178,14 +197,14 @@ module.exports = {
 						console.log('STDOUT: ' + data);
 					}).stderr.on('data', function(data) {
 						resolve(0);
-						console.log("no container at all");
+						console.log("No container at all");
 					});
 
 				});
 			}).connect(ssh_config);
 		});
 	},
-	flushArptable : function flushArptable() {
+	flushArptable() {
 		return new Promise(function (resolve,reject){
 			// console.log("called flush arp table");
 			// const platform = ;
@@ -199,8 +218,9 @@ module.exports = {
 			);
 		});
 	},
-	addNetwork_novlan : function addNetwork_novlan(number,ip,range,gateway,exclude) {
+	addNetwork_novlan(number,ip,range,gateway,exclude) {
 		return new Promise(function (resolve,reject){
+			const sleepTime = 1;
 			const value = {
 				network_id : number,
 				vlan : null,
@@ -212,9 +232,9 @@ module.exports = {
 
 			let command;
 			if(range){
-				command = "sudo docker network create --driver macvlan --subnet=" + ip + " --gateway=" + gateway + " --ip-range=" + range + " -o parent=enp0s8 dedicated_net" + number + " ; sleep 5"
+				command = "sudo docker network create --driver macvlan --subnet=" + ip + " --gateway=" + gateway + " --ip-range=" + range + " -o parent=enp0s8 dedicated_net" + number + " ; sleep " + sleepTime
 			}else{
-				command = "sudo docker network create --driver macvlan --subnet=" + ip + " --gateway=" + gateway + " -o parent=enp0s8 dedicated_net" + number + " ; sleep 5"
+				command = "sudo docker network create --driver macvlan --subnet=" + ip + " --gateway=" + gateway + " -o parent=enp0s8 dedicated_net" + number + " ; sleep " + sleepTime
 			}
 
 			// create network
@@ -227,13 +247,14 @@ module.exports = {
 						console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
 						conn.end();
 						// insert db when success
-						if(code == 0){
-							mongo.insertNetwork(value);
-							resolve(0);
-						}
 					}).on('data', function(data) {
 						console.log('STDOUT: ' + data);
+						// if(code == 0){
+							mongo.insertNetwork(value);
+							resolve(0);
+						// }
 					}).stderr.on('data', function(data) {
+						reject('STDERR: ' + data);
 						console.log('STDERR: ' + data);
 					});
 
@@ -242,7 +263,7 @@ module.exports = {
 
 		});
 	},
-	setMgmt : function setMgmt(ip,gateway,callback) {
+	setMgmt(ip,gateway,callback) {
 		return new Promise(function (resolve,reject){
 			const conn = new Client();
 			conn.on('ready', function() {
@@ -273,13 +294,12 @@ module.exports = {
 			resolve(0);
 		});
 	},
-	setMongo : function setMongo(callback) {
+	setMongo(callback) {
 		return new Promise(function (resolve,reject){
 			const conn = new Client();
 			conn.on('ready', function() {
 				// console.log('Client :: ready');
 				conn.exec(
-					"sleep 3 ; " +
 					"sudo docker run --name procyon-node-mongo -e TZ=Asia/Tokyo  --net=mgmt_net --ip " + mongoIP + " -d " + mongoApp
 					, function(err, stream) {
 					if (err) throw err;
@@ -290,6 +310,7 @@ module.exports = {
 					}).on('data', function(data) {
 						console.log('STDOUT: ' + data);
 					}).stderr.on('data', function(data) {
+						reject('STDERR: ' + data);
 						console.log('STDERR: ' + data);
 					});
 				});
@@ -297,12 +318,38 @@ module.exports = {
 			resolve(0);
 		});
 	},
-	setNTP : function setNTP(ip) {
+	setNTP(ntp,callback) {
 		return new Promise(function (resolve,reject){
 			const conn = new Client();
 			conn.on('ready', function() {
 				conn.exec(
-					"sudo ip addr del 10.10.10.10/24 dev enp0s8 &&" +
+					// "sudo ntpdate " + ntp + " && " +
+					"sudo sed -i -e '20,20d' /etc/chrony/chrony.conf && " +
+					"sudo sed -i -e \"20i server " + ntp + " iburst\" /etc/chrony/chrony.conf && " +
+					"sudo systemctl restart chrony"
+				, function(err, stream) {
+					if (err) throw err;
+					stream.on('close', function(code, signal) {
+						console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
+						conn.end();
+						callback();
+					}).on('data', function(data) {
+						console.log('STDOUT: ' + data);
+					}).stderr.on('data', function(data) {
+						reject('STDERR: ' + data);
+						console.log('STDERR: ' + data);
+					});
+				});
+			}).connect(ssh_config);
+			resolve(0);
+		});
+	},
+	setAddress(ip,gateway) {
+		return new Promise(function (resolve,reject){
+			const conn = new Client();
+			conn.on('ready', function() {
+				conn.exec(
+					"sudo ip addr del 10.10.10.10/24 dev enp0s8 && " +
 					"sudo ip addr add " + ip + " dev enp0s8 && " +
 					"sudo ip route add default via " + gateway
 				, function(err, stream) {
@@ -313,6 +360,7 @@ module.exports = {
 					}).on('data', function(data) {
 						console.log('STDOUT: ' + data);
 					}).stderr.on('data', function(data) {
+						reject('STDERR: ' + data);
 						console.log('STDERR: ' + data);
 					});
 				});
@@ -320,30 +368,7 @@ module.exports = {
 			resolve(0);
 		});
 	},
-	setAddress : function setAddress(ip,gateway) {
-		return new Promise(function (resolve,reject){
-			const conn = new Client();
-			conn.on('ready', function() {
-				conn.exec(
-					"sudo ip addr del 10.10.10.10/24 dev enp0s8 &&" +
-					"sudo ip addr add " + ip + " dev enp0s8 && " +
-					"sudo ip route add default via " + gateway
-				, function(err, stream) {
-					if (err) throw err;
-					stream.on('close', function(code, signal) {
-						console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
-						conn.end();
-					}).on('data', function(data) {
-						console.log('STDOUT: ' + data);
-					}).stderr.on('data', function(data) {
-						console.log('STDERR: ' + data);
-					});
-				});
-			}).connect(ssh_config);
-			resolve(0);
-		});
-	},
-	deleteNode : function deleteNode(callback) {
+	deleteNode(callback) {
 		return new Promise(function (resolve,reject){
 			machine.destroy(function (err, out) {
 				console.log(err, out);
@@ -352,7 +377,7 @@ module.exports = {
 			resolve(0);
 		});
 	},
-	deleteContainer : function deleteContainer(data) {
+	deleteContainer(data) {
 		return new Promise(function (resolve,reject){
 			const conn = new Client();
 			conn.on('ready', function() {
@@ -370,12 +395,12 @@ module.exports = {
 					}).on('data', function(data) {
 						console.log('STDOUT: ' + data);
 					}).stderr.on('data', function(data) {
+						reject('STDERR: ' + data);
 						console.log('STDERR: ' + data);
 					});
 
 				});
 			}).connect(ssh_config);
 		});
-	},
-
+	}
 }

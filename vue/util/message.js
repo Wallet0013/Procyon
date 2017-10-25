@@ -1,13 +1,14 @@
-module.exports = {
-	showNotification : function showNotification(message,type){
-		messageArea.$message({message:message,type:type});
-	}
-}
+// element ui
+import Vue 			from 'vue'
+import ElementUI  	from 'element-ui'
+import locale     	from 'element-ui/lib/locale/lang/ja'
+import 'element-ui/lib/theme-default/index.css'
+Vue.use(ElementUI, {locale});
 
-const messageArea = new Vue ({
+
+export const messageArea = new Vue ({
   el: "#messageArea",
   data() {
-    return {
-    }
+    return {}
   }
 })

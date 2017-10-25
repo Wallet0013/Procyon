@@ -10,7 +10,14 @@ import BigNumber      from "bignumber.js";
 import mongo          from "../util/mongo";
 // load vagrant util
 import procyon_node   from "../util/procyon-node";
-import message        from "../util/message";
+import {messageArea }       from "../util/message";
+
+// element ui
+import Vue      from 'vue'
+import ElementUI    from 'element-ui'
+import locale       from 'element-ui/lib/locale/lang/ja'
+import 'element-ui/lib/theme-default/index.css'
+Vue.use(ElementUI, {locale});
 
 const config = {
   ip:"172.20.10.2/24",
@@ -27,6 +34,8 @@ const nodeTool = new Vue ({
       nodeGateway:config.gateway,
       nodeNTP:config.ntp,
       bootnodeDisabled:false,
+      ntpDisable:false,
+      selectNTP:"Use Internal NTP",
       DisableInput:false,
       dialogVisible:false,
       progress:0,
@@ -42,12 +51,12 @@ const nodeTool = new Vue ({
         const status = yield procyon_node.getMachineStatus();
 
         if( status.default.status == "running"){
-          message.showNotification("Procyon node is already running.","warning");
+          messageArea.$message({message:"Procyon node is already running.",type:"warning"});
           nodeTool.bootnodeDisabled = false; // release boot button
         } else{
-          message.showNotification("flash arp","info");
+          messageArea.$message({message:"flash arp",type:"info"});
           procyon_node.flushArptable();
-          message.showNotification("Booting Procyon node! Please wait about 3 minutes","info");
+          messageArea.$message({message:"Booting Procyon node! Please wait about 3 minutes",type:"info"});
           let bootcnt = 120;
           const incrementCnt = 0.8;
           const bootTimer = setInterval( () =>{
@@ -55,7 +64,7 @@ const nodeTool = new Vue ({
             nodeTool.progress += incrementCnt;
           }, 1000);
           yield procyon_node.bootNode( () => {
-            message.showNotification("Procyon node is booted.","info");
+            messageArea.$message({message:"Procyon node is booted.",type:"info"});
           } );
 
           // retry
@@ -69,7 +78,7 @@ const nodeTool = new Vue ({
             bootcnt = 0;
             nodeTool.progress = 100;
             return procyon_node.setMgmt(nodeTool.nodeIP,nodeTool.nodeGateway, () =>{
-              message.showNotification("Management network is created.","info");
+              messageArea.$message({message:"Management network is created.",type:"info"});
             })
             // .catch(retry);
             .catch(function (err) {
@@ -82,7 +91,7 @@ const nodeTool = new Vue ({
           })
           .then(function (value) {
             procyon_node.setMongo( () => {
-              message.showNotification("Created mongoDB.","info");
+              messageArea.$message({message:"Created mongoDB.",type:"info"});
             });
             nodeTool.bootnodeDisabled = false;
             clearInterval(bootTimer);
@@ -96,28 +105,35 @@ const nodeTool = new Vue ({
       });
     },
     setAddress() {
-      message.showNotification("Set ip address to Procyon node");
+      messageArea.$message({message:"Set ip address to Procyon node",type:"info"});
       procyon_node.setAddress(nodeTool.nodeIP,nodeTool.nodeGateway);
     },
     getVersion() {
-      message.showNotification("Get vagrant version");
-      procyon_node.getVersion();
+      procyon_node.getVersion( (x) => {
+        messageArea.$message({message:x,type:"info"});
+      });
     },
     haltNode() {
-      message.showNotification("kill node");
+      messageArea.$message({message:"kill node",type:"info"});
       procyon_node.haltNode();
 
     },
     deleteNode() {
       nodeTool.dialogVisible = false;
-      message.showNotification("Delete Procyon node","info");
+      messageArea.$message({message:"Delete Procyon node",type:"info"});
       procyon_node.deleteNode( () => {
-        message.showNotification("Procyon node is deleted","info");
+        messageArea.$message({message:"Procyon node is deleted",type:"info"});
         nodeTool.DisableInput = false;
       });
     },
     setNTP(){
-      console.log("setntp");
+      // console.log(config.ntp);
+      nodeTool.ntpDisable = true;
+      procyon_node.setNTP(nodeTool.nodeNTP , () => {
+        messageArea.$message({message:"success setting ntp",type:"info"});
+        nodeTool.ntpDisable = false;
+      });
+      // console.log("setntp");
     },
   }
 })

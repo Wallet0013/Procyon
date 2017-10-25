@@ -25,6 +25,7 @@ Vagrant.configure("2") do |config|
 
     # install chrony
     config.vm.provision "shell", inline: "apt-get -y install chrony"
+    config.vm.provision "shell", inline: "sudo sed -i -e \"65i allow\" /etc/chrony/chrony.conf"
 
     # docker pull
     config.vm.provision "shell", inline: "docker pull wallet0013/procyon-node-app:1.0"
