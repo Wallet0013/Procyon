@@ -10,7 +10,7 @@ import BigNumber      from "bignumber.js";
 import mongo          from "../util/mongo";
 // load vagrant util
 import procyon_node   from "../util/procyon-node";
-import {messageArea }       from "../util/message";
+import {messageArea}  from "../util/message";
 
 // element ui
 import Vue      from 'vue'
@@ -76,9 +76,8 @@ const nodeTool = new Vue ({
           },function (retry, number) {
             console.log('attempt number', number);
             bootcnt = 0;
-            nodeTool.progress = 100;
             return procyon_node.setMgmt(nodeTool.nodeIP,nodeTool.nodeGateway, () =>{
-              messageArea.$message({message:"Management network is created.",type:"info"});
+              console.log("Management network is created.");
             })
             // .catch(retry);
             .catch(function (err) {
@@ -91,7 +90,9 @@ const nodeTool = new Vue ({
           })
           .then(function (value) {
             procyon_node.setMongo( () => {
-              messageArea.$message({message:"Created mongoDB.",type:"info"});
+              console.log("Created mongoDB.");
+              messageArea.$message({message:"Ready for Use.",type:"info"});
+              nodeTool.progress = 100;
             });
             nodeTool.bootnodeDisabled = false;
             clearInterval(bootTimer);
@@ -124,6 +125,7 @@ const nodeTool = new Vue ({
       procyon_node.deleteNode( () => {
         messageArea.$message({message:"Procyon node is deleted",type:"info"});
         nodeTool.DisableInput = false;
+        nodeTool.progress = 0;
       });
     },
     setNTP(){

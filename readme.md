@@ -1,45 +1,65 @@
 ## Procyon
-this is network utilities tools for network infrastractur enginner
+Procyon is network utilities tools for network infrastracture enginner
 
-Procyon achieve below
-
+Procyon achieve below things
 - ping to host append vlan,multi ip address
 - traceroute to host
 - get logs collectively
 
 ## confirmed platform
-Mac
-Windows 7
+Mac OS,Windows 7
 
-## install
-execute install.ps1
+## Install
+> I apologise for work on windows only.
+> this need network connectibity at first.
 
-### precondition
+run procyon_install.ps1
+
+this script excute these things
+- install chocolatey. choco is packegemanage like homebrew for windows
+- install virtualbox using choco
+- install vagrant using choco
+- pull Procyon-Node box. this is like OVA
+
+
+
+### Precondition
 - network connectibity to internet
 - be careful virtualbox version if you have already installed the virtualbox
 - be careful vagrant version if you have already installed the vagrant
 - required 2GB storage (box iamge less than 1GB and Procyon less than 1GB)
 - virtualbox require 2 vCPU & 1024MB Memory
-- 無線LAN環境では動作しないっぽいです(たぶんmacvlanが悪い)
+- didn't work on wireless LAN (I suspect due to macvlan)
 
 ### Procyon Compornent
 
 Procyon
-> Electron
-> node.js
-> vue.js
-> element-ui
+> Procyon use below compornent
+> - Electron
+> - node.js
+> - vue.js
+> - element-ui
+> - ECahrt.js
 
-rancheros
-> lightweight docker os for virtualbox
+Procyon-Node
+> work docker on ubutnu OS using virtualbox.
+> if you need login ubuntu, you use this usename/password [vagrant/vagrant]
 
-mongoDB
-> save ping log
-> 
+Procyon-Node-App
+> ping client on node.js
+
+Procyon-Node-Syslog
+> syslog server on node.js
+
+Procyon-Node-Mongo
+> This is mongoDB server.
+> this have these rolement
+> - management docker compornent data.
+> - keep logs about ping,traceroute,syslog ...
 
 
-### 注意
+### Caution
 端末のvboxnet0が書き換わります。
-端末のipセグメントを2つ管理用で消費します。
-200.200.x.x/16を管理用で使っているので、試験に使えません
-VirtualBoxのアップリンク帯域は100MBです。
+this is use two ipaddr
+use 200.200.x.x/16 for management. So this segment isn't use a test.
+

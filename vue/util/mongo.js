@@ -1,4 +1,5 @@
 const MongoClient 	= require("mongodb").MongoClient;
+
 const dbAddr 		= "200.200.0.3";
 const url 			= "mongodb://" + dbAddr + ":27017/procyon";
 const co 			= require("co");

@@ -1,10 +1,10 @@
-import ssh2		from 'ssh2';
-import mongo         from "./mongo";
-import vagrant from "node-vagrant";
-import moment from "moment";
-import sudo from 'sudo-prompt';
-import os from 'os';
-import S from 'string';
+import ssh2			from 'ssh2';
+import mongo        from "./mongo";
+import vagrant 		from "node-vagrant";
+import moment 		from "moment";
+import sudo 		from 'sudo-prompt';
+import os 			from 'os';
+import S 			from 'string';
 
 const Client = ssh2.Client;
 
@@ -265,6 +265,7 @@ export default {
 	},
 	setMgmt(ip,gateway,callback) {
 		return new Promise(function (resolve,reject){
+			const sleepTime = 7;
 			const conn = new Client();
 			conn.on('ready', function() {
 				// console.log('Client :: ready');
@@ -274,7 +275,7 @@ export default {
 					"sudo ip addr del 10.10.10.10/24 dev enp0s8 &&" +
 					"sudo ip addr add " + ip + " dev enp0s8 && " +
 					"sudo ip route add default via " + gateway + " &&" +
-					"sudo docker network create --driver=macvlan --subnet=200.200.0.0/16 --ip-range=200.200.128.0/17 -o parent=enp0s9 mgmt_net"
+					"sudo docker network create --driver=macvlan --subnet=200.200.0.0/16 --ip-range=200.200.128.0/17 -o parent=enp0s9 mgmt_net ; sleep " + sleepTime
 				, function(err, stream) {
 					if (err) {
 						throw err;
@@ -381,7 +382,7 @@ export default {
 		return new Promise(function (resolve,reject){
 			const conn = new Client();
 			conn.on('ready', function() {
-				const command = "docker rm -f " + data;
+				const command = "sudo docker rm -f " + data;
 				console.log(command);
 				conn.exec(command, function(err, stream) {
 					if (err) throw err;

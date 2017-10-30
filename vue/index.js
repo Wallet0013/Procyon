@@ -15,11 +15,13 @@ Vue.use(ElementUI, {locale});
 
 
 
-import mongo          from "./util/mongo";
-import procyon_node   from "./util/procyon-node"; // load vagrant util
+import mongo            from "./util/mongo";        // load mongo util about model
+import procyon_node     from "./util/procyon-node"; // load vagrant util
 import { messageArea }  from "./util/message";
-import lib_node       from "./lib/lib-node";
-import analytics      from "./analytics";
+import lib_node         from "./lib/lib-node";
+import lib_app          from "./lib/lib-app";
+import lib_projectTree  from "./lib/lib-projectTree";
+import analytics        from "./analytics";
 
 
 
@@ -36,6 +38,9 @@ function startWatcher() {
   stopWatcher();
   watcher.send({
     interval : LogArea.interval,
+    source:LogArea.filterLogsSource,
+    destnation:LogArea.filterLogsDestnation,
+    alive:LogArea.filterLogsAlive,
     start : "tes",
     end : "tes",
     limit : LogArea.logLimit
@@ -46,7 +51,7 @@ function startWatcher() {
       // console.log(result);
       const transResult = yield pingLogConvertor(result);
       LogArea.tableData = transResult;
-      LogArea.masterData = LogArea.tableData;
+      LogArea.masterData = transResult;
       analyticsPingLog(transResult);
     }).catch(function(err){
       process.on('unhandledRejection', console.log(err));
@@ -64,33 +69,21 @@ function stopWatcher() {
 function pingLogConvertor(result){
   return new Promise(function (resolve,reject){
     let transResult = new Array();
-    if(result.length == 0){
+    for(let i=0;i < result.length; i++){
+      let transTime;
+      transTime = (result[i].microsec / 1000).toString();
       transResult.push({
-        source:"No Data",
-        dest:"No Data",
-        alive:"No Data",
-        time:"No Data",
-        timestamp:"No Data",
-        message:"No Data"
-      });
-    }else{
-      for(i=0;i < result.length; i++){
-        let transTime;
-        transTime = (result[i].microsec / 1000).toString();
-        transResult.push({
-          source:result[i].source,
-          dest:result[i].destnation,
-          alive:result[i].alive + "",
-          time:transTime,
-          timestamp:moment(result[i].timestamp[0],"X").format('YYYY-MM-DD_h:mm:ss') + "." + result[i].timestamp[1].toString().slice(0,3),
-          message:result[i].error + ""
-        })
-      }
+        source:result[i].source,
+        dest:result[i].destnation,
+        alive:result[i].alive + "",
+        time:transTime,
+        timestamp:moment(result[i].timestamp[0],"X").format('YYYY-MM-DD h:mm:ss') + "." + result[i].timestamp[1].toString().slice(0,3),
+        message:result[i].error + ""
+      })
     }
     resolve(transResult);
   });
 }
-
 
 function analyticsPingLog(data){
   LogArea.totalPinglog = data.length;
@@ -111,7 +104,6 @@ function analyticsPingLog(data){
 
   LogArea.deadPinglog = deadcnt;
   LogArea.alivePinglog = alivecnt;
-
 }
 
 
@@ -140,6 +132,27 @@ function stopSyslogWatcher() {
     syslogWatcher.kill('SIGKILL');
     syslogWatcher = child_process.fork("./vue/wacher/mongo-wacher-syslog.js");
   })
+}
+
+function checkAppStatus(target){
+  return new Promise(function (resolve,reject){
+    co(function* () {
+      const uri = "http://" + target + ":50001/test";
+      // console.log("target : " + uri);
+      axios.get(uri)
+      .then(res => {
+        this.sending = false;
+        // console.log(res.status, res.statusText, res.data)
+        return 0;
+      })
+      .catch(error => {
+        this.sending = false
+        throw error
+      })
+    });
+  }).catch(function(err){
+    process.on('unhandledRejection', console.log(err));
+  });
 }
 
 function addNetwork(existNW,networkCidr,nodeAdd) {
@@ -248,13 +261,28 @@ const nodeAdd = new Vue ({
         dockerValue.service_ip = tmp.split("\n")[1];
         mongo.insertDockerNW(dockerValue);
 
+        let connectFLG = false;
+        // check conectibity
+        try{
+          setTimeout(checkAppStatus,3000,dockerValue.management_ip);
+          connectFLG = true;
+          console.log(connectFLG , !connectFLG);
+          // console.log(tet);
+        } catch(e){
+
+        }
+
         ContainerTableValue.push({
           management_ip:dockerValue.management_ip,
           service_ip:dockerValue.service_ip,
           network:dockerValue.ip,
-          vlan:dockerValue.vlan
+          vlan:dockerValue.vlan,
+          failure:!connectFLG,
+          conneted:true
         });
+
         containerTable.containerData = ContainerTableValue;
+        console.log(ContainerTableValue);
         ResultArea.AppData = ContainerTableValue;
         nodeAdd.addappDisabled = false;
       });
@@ -384,7 +412,7 @@ const ResultArea = new Vue ({
       })
       .catch(error => {
         this.sending = false
-        messageArea.$message({message:"fail ping request",type:"info"});
+        messageArea.$message({message:"fail ping request",type:"error"});
         throw error
       })
     },
@@ -399,7 +427,7 @@ const ResultArea = new Vue ({
       })
       .catch(error => {
         this.sending = false
-        messageArea.$message({message:"fail ping request.",type:"info"});
+        messageArea.$message({message:"fail ping request.",type:"error"});
 
         throw error
       })
@@ -450,22 +478,9 @@ const LogArea = new Vue({
   el: "#LogArea",
   data (){
     return{
-      tableData:[{
-        source:"",
-        dest:"",
-        alive:"",
-        time:"",
-        timestamp:"",
-        error:"",
-      }],
-      masterData:[{
-        source:"",
-        dest:"",
-        alive:"",
-        time:"",
-        timestamp:"",
-        error:"",
-      }],
+      tableData:[],
+      masterData:[],
+      LogActive:"Ping",
       MongoSwitch:false,
       interval:1000,
       logLimit:100,
@@ -534,20 +549,20 @@ const LogArea = new Vue({
         analyticsPingLog(data);
       })
     },
+    ChangeLogs(tab, event){
+      console.log(tab, event);
+    }
   },
   watch:{
     filterLogsSource: function(e){
-      // const search_word = this.filterLogs;
       const TargetData = LogArea.masterData;
 
       if(this.filterLogsSource == ""){
-        console.log("data");
         return LogArea.tableData = LogArea.masterData;
       }
 
-
       let find_logs = new Array();
-      for(data of TargetData){
+      for(let data of TargetData){
         let findFlg = 0;
         if(data.source.indexOf(this.filterLogsSource) >= 0){ findFlg = 1;}
         // if(data.message.indexOf(this.filterLogsSouce) >= 0){ findFlg = 1; }
@@ -560,17 +575,15 @@ const LogArea = new Vue({
       analyticsPingLog(find_logs);
     },
     filterLogsDestnation: function(e){
-      // const search_word = this.filterLogs;
       const TargetData = LogArea.masterData;
 
       if(this.filterLogsDestnation == ""){
-        console.log("data");
         return LogArea.tableData = LogArea.masterData;
       }
 
 
       let find_logs = new Array();
-      for(data of TargetData){
+      for(let data of TargetData){
         let findFlg = 0;
         if(data.dest.indexOf(this.filterLogsDestnation) >= 0){ findFlg = 1; }
 
@@ -582,16 +595,14 @@ const LogArea = new Vue({
       analyticsPingLog(find_logs);
     },
     filterLogsAlive: function(e){
-      // const search_word = this.filterLogs;
       const TargetData = LogArea.masterData;
 
       if(this.filterLogsAlive == ""){
-        console.log("data");
         return LogArea.tableData = LogArea.masterData;
       }
 
       let find_logs = new Array();
-      for(data of TargetData){
+      for(let data of TargetData){
         let findFlg = 0;
         if(data.alive.indexOf(this.filterLogsAlive) >= 0){ findFlg = 1; }
 
@@ -616,7 +627,7 @@ const LogArea = new Vue({
       }
 
       let find_logs = new Array();
-      for(data of TargetData){
+      for(let data of TargetData){
         // let findFlg = 0;
         // if(data.alive.indexOf(this.filterLogsTime) >= 0){ findFlg = 1; }
 
