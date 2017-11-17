@@ -5,14 +5,25 @@ import axios          from "axios";
 import promiseRetry   from "promise-retry";
 import child_process  from "child_process";
 import BigNumber      from "bignumber.js";
+import Papa           from "papaparse";
 
 // element ui
-import Vue            from 'vue'
-import ElementUI      from 'element-ui'
-import locale         from 'element-ui/lib/locale/lang/ja'
-import 'element-ui/lib/theme-default/index.css'
+import Vue            from 'vue';
+import ElementUI      from 'element-ui';
+import locale         from 'element-ui/lib/locale/lang/ja';
+import 'element-ui/lib/theme-chalk/index.css'
 Vue.use(ElementUI, {locale});
 
+
+// compornent
+// from nodetool import './components/node-tool.vue';
+
+// // root インスタンスを作成する
+// new Vue({
+//   el: '#defalut',
+//   components: { nodetool },
+//   template: '<node-tool>'
+// })
 
 
 import mongo            from "./util/mongo";        // load mongo util about model
@@ -21,6 +32,7 @@ import { messageArea }  from "./util/message";
 import lib_node         from "./lib/lib-node";
 import lib_app          from "./lib/lib-app";
 import lib_projectTree  from "./lib/lib-projectTree";
+import lib_topNav       from "./lib/lib-topNav";
 import analytics        from "./analytics";
 
 
@@ -69,12 +81,15 @@ function stopWatcher() {
 function pingLogConvertor(result){
   return new Promise(function (resolve,reject){
     let transResult = new Array();
-    for(let i=0;i < result.length; i++){
+    let i;
+    for(i = 0;i < result.length; i++){
       let transTime;
       transTime = (result[i].microsec / 1000).toString();
       transResult.push({
         source:result[i].source,
+        source_resolve:(result[i].source_resolve !== undefined) ? result[i].source_resolve.name : "",
         dest:result[i].destnation,
+        dest_resolve:(result[i].destnation_resolve !== undefined) ? result[i].destnation_resolve.name : "",
         alive:result[i].alive + "",
         time:transTime,
         timestamp:moment(result[i].timestamp[0],"X").format('YYYY-MM-DD h:mm:ss') + "." + result[i].timestamp[1].toString().slice(0,3),
@@ -119,8 +134,8 @@ function startSyslogWatcher() {
 
   syslogWatcher.on("message", function (result) {
     co(function* () {
-      syslogArea.tableSyslogData = result;
-      syslogArea.tableSyslogMasterData = result;
+      LogArea.tableSyslogData = result;
+      LogArea.tableSyslogMasterData = result;
     }).catch(function(err){
       process.on('unhandledRejection', console.log(err));
     });
@@ -130,7 +145,7 @@ function startSyslogWatcher() {
 function stopSyslogWatcher() {
   co(function* () {
     syslogWatcher.kill('SIGKILL');
-    syslogWatcher = child_process.fork("./vue/wacher/mongo-wacher-syslog.js");
+    syslogWatcher = child_process.fork("./vue/watcher/mongo-wacher-syslog.js");
   })
 }
 
@@ -189,19 +204,7 @@ function addNetwork(existNW,networkCidr,nodeAdd) {
   });
 }
 
-const topNav = new Vue({
-  el : "#topNav",
-  data() {
-    return {
-      activeIndex: '1'
-    };
-  },
-  methods: {
-    handleSelect(key, keyPath) {
-      console.log(key, keyPath);
-    }
-  }
-})
+
 
 const nodeAdd = new Vue ({
   el: "#nodeAdd",
@@ -278,6 +281,7 @@ const nodeAdd = new Vue ({
           network:dockerValue.ip,
           vlan:dockerValue.vlan,
           failure:!connectFLG,
+          pingdisabled:false,
           conneted:true
         });
 
@@ -393,8 +397,10 @@ const ResultArea = new Vue ({
   },
   methods: {
     startPing(data,index){
+      console.log("ping disabled : ",data.pingdisabled);
       if (data.targetip == undefined){
         messageArea.$message({message:"Target ip is null",type:"error"});
+        data.pingdisabled = false;
         return 127;
       }
       const status = true;
@@ -406,12 +412,15 @@ const ResultArea = new Vue ({
         packetsize:containerTable.reqConf.packetsize
       })
       .then(res => {
-        this.sending = false
+        this.sending = false;
+        data.pingdisabled = true;
+
         messageArea.$message({message:"success ping request.",type:"info"});
         console.log(res.status, res.statusText, res.data)
       })
       .catch(error => {
-        this.sending = false
+        this.sending = false;
+        data.pingdisabled = false;
         messageArea.$message({message:"fail ping request",type:"error"});
         throw error
       })
@@ -422,6 +431,7 @@ const ResultArea = new Vue ({
       axios.post("http://" + data.management_ip + ":50001/stop_ping")
       .then(res => {
         this.sending = false
+        data.pingdisabled = false; // unlock disable button
         messageArea.$message({message:"success stopping ping request.",type:"info"});
         console.log(res.status, res.statusText, res.data)
       })
@@ -481,7 +491,7 @@ const LogArea = new Vue({
       tableData:[],
       masterData:[],
       LogActive:"Ping",
-      MongoSwitch:false,
+      MongoSwitchPing:false,
       interval:1000,
       logLimit:100,
       logStaticLimit:100,
@@ -511,13 +521,39 @@ const LogArea = new Vue({
             picker.$emit('pick', [start, end]);
           }
         }]
-      }
+      },
+      MongoSwitchSyslog:false,
+      tableSyslogData : [{
+        facility:"",
+        severity:"",
+        tag:"",
+        times:"",
+        hostname:"",
+        address:"",
+        port:"",
+        size:"",
+        msg:""
+      }],
+      tableSyslogMasterData : [{
+        facility:"",
+        severity:"",
+        tag:"",
+        times:"",
+        hostname:"",
+        address:"",
+        port:"",
+        size:"",
+        msg:""
+      }],
+      MongoSwitchTraceroute:false,
+      hosts:"",
+      resolveType:"IP",
     }
   },
   methods: {
-    changeSwitch(value) {
+    changeSwitch() {
       co(function* () {
-      if(LogArea.MongoSwitch){
+        if(LogArea.MongoSwitchPing){
           // LogArea.$el.getElementsByClassName("el-table")[0].hidden = false;
           try{
             yield mongo.getStatus();
@@ -525,7 +561,7 @@ const LogArea = new Vue({
           } catch(e){
             console.log("failed");
             messageArea.$message({message:"Fail connecting mongodb.",type:"error"});
-            LogArea.MongoSwitch = false;
+            LogArea.MongoSwitchPing = false;
           }
         }
         else{
@@ -550,7 +586,87 @@ const LogArea = new Vue({
       })
     },
     ChangeLogs(tab, event){
-      console.log(tab, event);
+      // console.log(tab, event);
+    },
+    changeSwitchSyslog() {
+      co(function* () {
+        if(LogArea.MongoSwitchSyslog){
+          // LogArea.$el.getElementsByClassName("el-table")[0].hidden = false;
+          try{
+            yield mongo.getStatus();
+            startSyslogWatcher();
+          } catch(e){
+            console.log("failed");
+            messageArea.$message({message:"failed connecting mongodb",type:"error"});
+            LogArea.MongoSwitchSyslog = false
+          }
+        }
+        else{
+          // LogArea.$el.getElementsByClassName("el-table")[0].hidden = true;
+          stopSyslogWatcher();
+        }
+      })
+    },
+    changeSwitchTraceroute() {
+      co(function* () {
+        // if(LogArea.MongoSwitchTraceroute){
+        //   // LogArea.$el.getElementsByClassName("el-table")[0].hidden = false;
+        //   try{
+        //     yield mongo.getStatus();
+        //     startSyslogWatcher();
+        //   } catch(e){
+        //     console.log("failed");
+        //     messageArea.$message({message:"failed connecting mongodb",type:"error"});
+        //     LogArea.MongoSwitchTraceroute = false
+        //   }
+        // }
+        // else{
+        //   // LogArea.$el.getElementsByClassName("el-table")[0].hidden = true;
+        //   stopSyslogWatcher();
+        // }
+      })
+    },
+    // save record
+    registRecord(){
+      co(function* () {
+        let record = new Array();
+
+        const results = Papa.parse(LogArea.hosts,{delimiter: " "});
+
+        // console.log(results);
+
+        for(let result of results.data){
+          // console.log(result);
+          const data = {
+            ip:result[0],
+            name:result[1]
+          }
+          record.push(data);
+        }
+        // console.log(record);
+
+        yield mongo.registRecord(record, () => {
+          console.log("ok");
+          messageArea.$message({message:"success record registration.",type:"info"});
+        });
+      })
+    },
+    resetRecord(){
+      co(function* () {
+        let record = new Array();
+
+        for(let result of results.data){
+          console.log(result);
+          const data = {
+            ip:result[0],
+            name:result[1]
+          }
+          record.push(data);
+        }
+        console.log(record);
+
+        yield mongo.registRecord(record);
+      })
     }
   },
   watch:{
@@ -642,55 +758,4 @@ const LogArea = new Vue({
   }
 })
 
-const syslogArea = new Vue({
-  el: "#syslogArea",
-  data (){
-    return{
-      MongoSwitch:false,
-      tableSyslogData : [{
-        facility:"",
-        severity:"",
-        tag:"",
-        times:"",
-        hostname:"",
-        address:"",
-        port:"",
-        size:"",
-        msg:""
-      }],
-      tableSyslogMasterData : [{
-        facility:"",
-        severity:"",
-        tag:"",
-        times:"",
-        hostname:"",
-        address:"",
-        port:"",
-        size:"",
-        msg:""
-      }],
-    }
-  },
-  methods: {
-    changeSwitch() {
-      co(function* () {
-        if(syslogArea.MongoSwitch){
-          // LogArea.$el.getElementsByClassName("el-table")[0].hidden = false;
-          try{
-            yield mongo.getStatus();
-            startSyslogWatcher();
-          } catch(e){
-            console.log("failed");
-            nodeTool.$message({message:"failed connecting mongodb",type:"error"});
-            syslogArea.MongoSwitch = false
-          }
-        }
-        else{
-          // LogArea.$el.getElementsByClassName("el-table")[0].hidden = true;
-          stopSyslogWatcher();
-        }
-      })
-    }
-  }
-})
-
+// new Vue().$mount('#default')

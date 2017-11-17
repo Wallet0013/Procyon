@@ -16,14 +16,14 @@ import {messageArea}  from "../util/message";
 import Vue      from 'vue'
 import ElementUI    from 'element-ui'
 import locale       from 'element-ui/lib/locale/lang/ja'
-import 'element-ui/lib/theme-default/index.css'
+import 'element-ui/lib/theme-chalk/index.css'
 Vue.use(ElementUI, {locale});
 
 const projectTree = new Vue ({
   el: "#projectTree",
   data() {
       return {
-        data2: [{
+        projectData: [{
           id: 1,
           label: 'Level one 1',
           children: [{

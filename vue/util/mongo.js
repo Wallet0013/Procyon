@@ -24,14 +24,105 @@ module.exports = {
 
 		});
 	},
-	getPingCollection : function getPingCollection(limit) {
+	getSyslogCollection : function getSyslogCollection(limit,QueryParam) {
 		return new Promise(function (resolve,reject){
 			co(function* () {
 				try{
 					db = yield MongoClient.connect(url);
-					let pinglog = yield db.collection("ping").find().sort({_id: -1}).limit(Number(limit)).toArray()
-					db.close();
-					resolve(pinglog);
+					let pinglog;
+					if (QueryParam == undefined){
+						QueryParam = {};
+					}
+					// console.log("QueryParam",QueryParam);
+					let logs =  db.collection("syslog").aggregate([
+						{$match:QueryParam},
+						{$sort:{_id: -1}},
+						{$lookup:
+					    	{
+					        	from:"resolve",
+					        	localField:"address",
+					        	foreignField:"ip",
+					        	as:"address_resolve"
+					    	}
+						},
+						{$unwind:"$address_resolve"},
+						{$limit: 100}
+					],function(err, result) {
+						if (err){
+							db.close();
+							reject(err);
+							console.log(err);
+						}
+						db.close();
+						resolve(result);
+						// console.log("result",result);
+					});
+					// db.close();
+					// resolve(pinglog);
+				}catch(e){
+					console.log("error : " + e);
+					reject(127);
+				}
+
+			}).catch(function(err){
+				process.on('unhandledRejection', console.log(err));
+			});
+
+		});
+	},
+	getPingCollection : function getPingCollection(limit,QueryParam) {
+		return new Promise(function (resolve,reject){
+			co(function* () {
+				try{
+					db = yield MongoClient.connect(url);
+					let pinglog;
+					if (QueryParam == undefined){
+						QueryParam = {};
+					}
+					let logs =  db.collection("ping").aggregate([
+						{$match:QueryParam},
+						{$sort:{_id: -1}},
+						{$lookup:
+					    	{
+					        	from:"resolve",
+					        	localField:"source",
+					        	foreignField:"ip",
+					        	as:"source_resolve"
+					    	}
+						},
+						{$unwind:
+							{
+				            	path:"$source_resolve",
+				            	preserveNullAndEmptyArrays: true
+			        		}
+				        },
+						{$lookup:
+					    	{
+					        	from:"resolve",
+					        	localField:"destnation",
+					        	foreignField:"ip",
+					        	as:"destnation_resolve"
+					    	}
+						},
+						{$unwind:
+							{
+				            	path:"$destnation_resolve",
+				            	preserveNullAndEmptyArrays: true
+			        		}
+				        },
+						{$limit: 100}
+					],function(err, result) {
+						if (err){
+							db.close();
+							reject(err);
+							console.log(err);
+						}
+						db.close();
+						resolve(result);
+						// console.log("result",result);
+					});
+					// db.close();
+					// resolve(pinglog);
 				}catch(e){
 					console.log("error : " + e);
 					reject(127);
@@ -250,6 +341,32 @@ module.exports = {
 
 				yield db.close();
 				resolve(0);
+
+			}).catch(function(err){
+				process.on('unhandledRejection', console.log(err));
+			});
+
+		});
+	},
+	registRecord : function registRecord(record,callback){
+		return new Promise(function (resolve,reject){
+			co(function* () {
+				const db = yield MongoClient.connect(url);
+
+				for (data of record){
+					const result = yield db.collection("resolve").find({ip:data.ip}).toArray();
+
+					for (i of result){
+						yield db.collection("resolve").remove({ip:i.ip});
+						console.log("remove",i);
+					}
+				}
+
+				db.collection("resolve").insert(record);
+				// console.log(record);
+				yield db.close();
+				resolve(0);
+				callback();
 
 			}).catch(function(err){
 				process.on('unhandledRejection', console.log(err));

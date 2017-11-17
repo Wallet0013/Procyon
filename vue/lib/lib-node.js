@@ -16,7 +16,7 @@ import {messageArea}  from "../util/message";
 import Vue      from 'vue'
 import ElementUI    from 'element-ui'
 import locale       from 'element-ui/lib/locale/lang/ja'
-import 'element-ui/lib/theme-default/index.css'
+import 'element-ui/lib/theme-chalk/index.css'
 Vue.use(ElementUI, {locale});
 
 const config = {
@@ -25,6 +25,7 @@ const config = {
   external:true,
   ntp:"ntp.nict.jp",
 }
+
 
 const nodeTool = new Vue ({
   el: "#nodeTool",

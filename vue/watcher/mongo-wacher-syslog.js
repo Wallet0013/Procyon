@@ -1,7 +1,9 @@
 const co          = require('co');
 const moment      = require('moment');
 const MongoClient = require("mongodb").MongoClient;
-const url = "mongodb://200.200.0.3:27017/procyon";
+const url         = "mongodb://200.200.0.3:27017/procyon";
+
+const mongo       = require("../util/mongo");
 
 let db;
 let limit;

@@ -1,7 +1,9 @@
 const co          = require('co');
 const moment      = require('moment');
 const MongoClient = require("mongodb").MongoClient;
-const url = "mongodb://200.200.0.3:27017/procyon";
+const url         = "mongodb://200.200.0.3:27017/procyon";
+
+const mongo       = require("../util/mongo");
 
 let db;
 let limit;
@@ -21,12 +23,10 @@ function getPingCollection(source,destnation,alive) {
       if(alive){
         aliveQuery = JSON.stringify({alive :{ $regex: ".*" + alive + ".*"}});
       }
-      // console.log( souceQuery + destnationQuery + aliveQuery );
       const QueryParam = JSON.parse(souceQuery,destnationQuery,aliveQuery);
-      // console.log(QueryParam);
-      db = yield MongoClient.connect(url);
-      let pinglog = yield db.collection("ping").find(QueryParam).sort({_id: -1}).limit(limit).toArray()
-      db.close();
+
+      let pinglog = yield mongo.getPingCollection(limit,QueryParam);
+
       process.send(pinglog);
     }catch(e){
       console.log(e);

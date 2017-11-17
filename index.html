@@ -4,376 +4,357 @@
     <meta charset="UTF-8">
     <title>Procyon</title>
     <script src="./node_modules/echarts/dist/echarts.js"></script>
+    <link rel="stylesheet" href="./node_modules/purecss/build/pure-min.css">
   </head>
   <body>
-    <el-container>
-      <el-header>
-        <div id="messageArea"></div>
-        <div id=topNav>
-          <el-menu theme="dark" :default-active="activeIndex" class="el-menu-demo" mode="horizontal" @select="handleSelect">
-            <el-menu-item index="1">Processing Center</el-menu-item>
-            <el-submenu index="2">
-              <template slot="title">Workspace</template>
-              <el-menu-item index="2-1">item one</el-menu-item>
-            </el-submenu>
-            <el-menu-item index="3"><a href="" target="_blank">Orders</a></el-menu-item>
-          </el-menu>
+    <div class="header">
+      <div id="messageArea"></div>
+      <div id=topNav>
+        <el-menu :default-active="activeIndex" mode="horizontal" @select="handleSelect" background-color="#545c64"
+        text-color="#fff"
+        active-text-color="#ffd04b">
+          <el-menu-item index="1" :click="call()">Node</el-menu-item>
+          <el-menu-item index="2">App</el-menu-item>
+          <el-menu-item index="3">Management App</el-menu-item>
+          <el-menu-item index="4">Analytics</el-menu-item>
+        </el-menu>
+      </div>
+    </div>
+    <div class="pure-g">
+      <div class="pure-u-1-5" background-color="#D8DCE5">
+        <div id="projectTree">
+          <el-tree
+            :data="projectData"
+            show-checkbox
+            node-key="id"
+            :default-expanded-keys="[2, 3]"
+            :default-checked-keys="[5]"
+            :props="defaultProps"
+            background-color="#CFD8DC">
+          </el-tree>
         </div>
-      </el-header>
-      <el-container>
-        <el-aside width="200px">
-          <div id="projectTree">
-            <el-tree
-              :data="data2"
-              show-checkbox
-              node-key="id"
-              :default-expanded-keys="[2, 3]"
-              :default-checked-keys="[5]"
-              :props="defaultProps">
-            </el-tree>
-          </div>
-          <el-menu>
-            <el-submenu index="1">
-              <template slot="title"><i class="el-icon-message"></i>Navigator One</template>
-              <el-menu-item-group>
-                <template slot="title">Group 1</template>
-                <el-menu-item index="1-1">Option 1</el-menu-item>
-                <el-menu-item index="1-2">Option 2</el-menu-item>
-              </el-menu-item-group>
-              <el-menu-item-group title="Group 2">
-                <el-menu-item index="1-3">Option 3</el-menu-item>
-              </el-menu-item-group>
-              <el-submenu index="1-4">
-                <template slot="title">Option4</template>
-                <el-menu-item index="1-4-1">Option 4-1</el-menu-item>
-              </el-submenu>
-            </el-submenu>
-            <el-submenu index="2">
-              <template slot="title"><i class="el-icon-menu"></i>Navigator Two</template>
-              <el-menu-item-group>
-                <template slot="title">Group 1</template>
-                <el-menu-item index="2-1">Option 1</el-menu-item>
-                <el-menu-item index="2-2">Option 2</el-menu-item>
-              </el-menu-item-group>
-              <el-menu-item-group title="Group 2">
-                <el-menu-item index="2-3">Option 3</el-menu-item>
-              </el-menu-item-group>
-              <el-submenu index="2-4">
-                <template slot="title">Option 4</template>
-                <el-menu-item index="2-4-1">Option 4-1</el-menu-item>
-              </el-submenu>
-            </el-submenu>
-            <el-submenu index="3">
-              <template slot="title"><i class="el-icon-setting"></i>Navigator Three</template>
-              <el-menu-item-group>
-                <template slot="title">Group 1</template>
-                <el-menu-item index="3-1">Option 1</el-menu-item>
-                <el-menu-item index="3-2">Option 2</el-menu-item>
-              </el-menu-item-group>
-              <el-menu-item-group title="Group 2">
-                <el-menu-item index="3-3">Option 3</el-menu-item>
-              </el-menu-item-group>
-              <el-submenu index="3-4">
-                <template slot="title">Option 4</template>
-                <el-menu-item index="3-4-1">Option 4-1</el-menu-item>
-              </el-submenu>
-            </el-submenu>
-          </el-menu>
-        </el-aside>
-        <el-main>
-          <div id="nodeTool">
-            <h2> Procyon Node Utilities </h2>
-              <el-button type="success">Connect Node</el-button>
+      </div>
+      <div class="pure-u-4-5">
+        <div id="nodeTool">
+          <h2> Procyon Node Utilities </h2>
+          <el-button type="success">Connect Node</el-button>
+          <el-form label-width="80px">
+            <el-progress :percentage="progress" :show-text="false" ></el-progress>
+            <el-form-item label="Node IP">
+              <el-input placeholder="IP : 192.168.1.1/24" v-model="nodeIP" v-bind:disabled="DisableInput"> </el-input>
+            </el-form-item>
+            <el-form-item label="Gateway">
+              <el-input placeholder="Gateway : 192.168.1.1" v-model="nodeGateway" v-bind:disabled="DisableInput"> </el-input>
+            </el-form-item>
+            <el-form-item label="External NTP">
+              <el-input placeholder="NTP : ntp.nict.jp" v-model="nodeNTP"> </el-input>
+            </el-form-item>
+            <el-button type="primary" @click="bootNode" v-bind:disabled="bootnodeDisabled">Boot Node</el-button>
+            <el-button type="primary" @click="setNTP" v-bind:disabled="ntpDisable">Set NTP</el-button>
+            <!-- <el-button type="primary" @click="setAddress">Reset IP</el-button> -->
+            <el-button type="info" @click="getVersion">GetVersion</el-button>
+            <el-button type="danger" @click="dialogVisible = true">DeleteNode</el-button>
+          </el-form>
+          <el-dialog
+            title="Caution"
+            :visible.sync="dialogVisible">
+            <span>Do you delete Procyon Node ?</span>
+            <span slot="footer" class="dialog-footer">
+              <el-button @click="dialogVisible = false">Cancel</el-button>
+              <el-button type="danger" @click="deleteNode">Delete</el-button>
+            </span>
+          </el-dialog>
+        </div>
+        <hr>
+        <div id="nodeAdd" ef="form" :model="form">
+          <h2>App Utilities</h2>
+          <el-form label-width="80px">
+            <el-form-item label="VLAN">
+             <el-input placeholder="VLAN : 100" v-model="form.vlan"> </el-input>
+            </el-form-item>
+            <el-form-item  label="Network">
+              <el-input placeholder="Network : 192.168.1.0/24" v-model="form.IPaddr"
+                :rules="[
+                { required: true, message: 'age is required'},
+                { type: 'number', message: 'age must be a number'}]"></el-input>
+            </el-form-item>
+            <el-form-item  label="IP Range">
+             <el-input placeholder="IP Range : 192.168.1.0/24" v-model="form.IPrange"> </el-input>
+            </el-form-item>
+            <el-form-item label="Gateway">
+              <el-input placeholder="Gateway : 192.168.1.254" v-model="form.gateway"> </el-input>
+            </el-form-item>
+            <el-form-item label="Exclude IP">
+              <el-input placeholder="Exclude : 192.168.1.1" v-model="form.exclude"> </el-input>
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="addApp('app')" v-bind:disabled="addappDisabled">Add App</el-button>
+              <el-button type="primary" @click="addApp('syslog')" v-bind:disabled="addappDisabled">Add Syslog</el-button>
+            </el-form-item>
+          </el-form>
+        </div>
+        <div id="containerTable">
+          <el-button type="danger" @click="flushContainer()">Delete AllApp</el-button>
+          <el-button type="danger" @click="flushArptable()">Flush ArpTable</el-button>
+          <el-form :inline="true" :model="reqConf">
+            <el-form-item label="Timeout">
+              <el-input v-model="reqConf.timeout" placeholder="1000 (msec)"></el-input>
+            </el-form-item>
+            <el-form-item label="Interval">
+              <el-input v-model="reqConf.interval" placeholder="1000 (msec)"></el-input>
+            </el-form-item>
+            <el-form-item label="PacketSize">
+              <el-input v-model="reqConf.packetsize" placeholder="54"></el-input>
+            </el-form-item>
+            <el-form-item label="hop">
+              <el-input v-model="reqConf.hop" placeholder="10"></el-input>
+            </el-form-item>
+          </el-form>
+        </div>
+        <el-row id="ResultArea" >
+          <el-col :span="4" v-for="(item, index) in AppData" :key="index" :offset="1">
+            <el-card :body-style="{ padding: '20px' }">
+              <el-tag type="success" v-if="item.connected" >Connected</el-tag>
+              <el-tag type="danger" v-else="item.connected" >Failure</el-tag>
+              <el-button @click="deleteContainer(item,index)" size="small" type="danger" class="button" icon="el-icon-close"></el-button>
+              <el-form :label-position="labelPosition">
+                <el-form-item label="Management IP">
+                  <el-input size="small" :disabled="true" v-model="item.management_ip"></el-input>
+                </el-form-item>
+                <el-form-item label="Service IP">
+                  <el-input size="small" :disabled="true" v-model="item.service_ip"></el-input>
+                </el-form-item>
+                <el-form-item label="Vlan">
+                  <el-input size="small" :disabled="true" v-model="item.vlan"></el-input>
+                </el-form-item>
+                <el-form-item label="Network">
+                  <el-input size="small" :disabled="true" v-model="item.network"></el-input>
+                </el-form-item>
+                <el-form-item label="Target IP">
+                  <el-input size="small" v-model="item.targetip" placeholder="192.168.1.1"></el-input>
+                </el-form-item>
+                <div>
+                  <el-button @click="startPing(item,index)" v-bind:disabled="item.pingdisabled" type="text" class="button">Ping Start</el-button>
+                  <br>
+                  <el-button @click="stopPing(item,index)" v-bind:disabled="!item.pingdisabled" type="text" class="button">Ping Stop</el-button>
+                  <br>
+                  <el-button @click="startTraceroute(item,index)" type="text" class="button">Traceroute</el-button>
+                </div>
+              </el-form>
+            </el-card>
+          </el-col>
+        </el-row>
+        <hr>
+        <div id="AnalyticsArea">
+          <el-button @click="reloadChart()" type="primary" class="button">Reload</el-button>
+          <div id="pie-chart" style="width:100%; height:200px; display: inline-block"></div>
+        </div>
 
-            <el-form label-width="80px">
-              <el-progress :percentage="progress" :show-text="false" ></el-progress>
-              <el-form-item label="Node IP">
-                <el-input placeholder="IP : 192.168.1.1/24" v-model="nodeIP" v-bind:disabled="DisableInput"> </el-input>
-              </el-form-item>
-              <el-form-item label="Gateway">
-                <el-input placeholder="Gateway : 192.168.1.1" v-model="nodeGateway" v-bind:disabled="DisableInput"> </el-input>
-              </el-form-item>
-              <el-form-item label="External NTP">
-                <el-input placeholder="NTP : ntp.nict.jp" v-model="nodeNTP"> </el-input>
-              </el-form-item>
-              <el-button type="primary" @click="bootNode" v-bind:disabled="bootnodeDisabled">Boot Node</el-button>
-              <el-button type="primary" @click="setNTP" v-bind:disabled="ntpDisable">Set NTP</el-button>
-              <!-- <el-button type="primary" @click="setAddress">Reset IP</el-button> -->
-              <el-button type="info" @click="getVersion">GetVersion</el-button>
-              <el-button type="danger" @click="dialogVisible = true">DeleteNode</el-button>
-            </el-form>
-            <el-dialog
-              title="Caution"
-              :visible.sync="dialogVisible"
-              size="tiny">
-              <span>Do you delete Procyon Node ?</span>
-              <span slot="footer" class="dialog-footer">
-                <el-button @click="dialogVisible = false">Cancel</el-button>
-                <el-button type="danger" @click="deleteNode">Delete</el-button>
-              </span>
-            </el-dialog>
+        <div id="LogArea">
+          <div class="resolve">
+            <h2>Resolve Name</h2>
+            <el-input
+              type="textarea"
+              autosize
+              placeholder="Please Paste hosts like blew example
+            --------------------
+            192.168.1.1 kyotenGW
+            10.10.10.10 gaisetsu1"
+              v-model="hosts">
+            </el-input>
+            <el-button @click="registRecord()" type="primary" >Regist</el-button>
+            <el-button @click="checkRecord()" type="success" >CheckReg</el-button>
+            <el-button @click="resetRecord()" type="danger" >UnRegist</el-button>
           </div>
-          <hr>
-          <div id="nodeAdd" ef="form" :model="form" >
-            <h2>App Utilities</h2>
-            <el-form label-width="80px">
-              <el-form-item label="VLAN">
-               <el-input placeholder="VLAN : 100" v-model="form.vlan"> </el-input>
-              </el-form-item>
-              <el-form-item  label="Network">
-                <el-input placeholder="Network : 192.168.1.0/24" v-model="form.IPaddr"
-                  :rules="[
-                  { required: true, message: 'age is required'},
-                  { type: 'number', message: 'age must be a number'}]"></el-input>
-              </el-form-item>
-              <el-form-item  label="IP Range">
-               <el-input placeholder="IP Range : 192.168.1.0/24" v-model="form.IPrange"> </el-input>
-              </el-form-item>
-              <el-form-item label="Gateway">
-                <el-input placeholder="Gateway : 192.168.1.254" v-model="form.gateway"> </el-input>
-              </el-form-item>
-              <el-form-item label="Exclude IP">
-                <el-input placeholder="Exclude : 192.168.1.1" v-model="form.exclude"> </el-input>
-              </el-form-item>
-              <el-form-item>
-                <el-button type="primary" @click="addApp('app')" v-bind:disabled="addappDisabled">Add App</el-button>
-                <el-button type="primary" @click="addApp('syslog')" v-bind:disabled="addappDisabled">Add Syslog</el-button>
-              </el-form-item>
-            </el-form>
-          </div>
-          <div id="containerTable">
-            <el-button type="danger" @click="flushContainer()">Delete AllApp</el-button>
-            <el-button type="danger" @click="flushArptable()">Flush ArpTable</el-button>
-            <el-form :inline="true" :model="reqConf">
-              <el-form-item label="Timeout">
-                <el-input v-model="reqConf.timeout" placeholder="1000 (msec)"></el-input>
-              </el-form-item>
-              <el-form-item label="Interval">
-                <el-input v-model="reqConf.interval" placeholder="1000 (msec)"></el-input>
-              </el-form-item>
-              <el-form-item label="PacketSize">
-                <el-input v-model="reqConf.packetsize" placeholder="54"></el-input>
-              </el-form-item>
-              <el-form-item label="hop">
-                <el-input v-model="reqConf.hop" placeholder="10"></el-input>
-              </el-form-item>
-            </el-form>
-          </div>
-          <el-row id="ResultArea" >
-            <el-col :span="4" v-for="(item, index) in AppData" :key="index" :offset="1">
-              <el-card :body-style="{ padding: '20px' }">
-                <el-tag type="success" v-if="item.connected" >Connected</el-tag>
-                <el-tag type="danger" v-else="item.connected" >Failure</el-tag>
-                <el-button @click="deleteContainer(item,index)" size="small" type="danger" class="button" icon="close"></el-button>
-                <el-form :label-position="labelPosition">
-                  <el-form-item label="Management IP">
-                    <el-input size="small" :disabled="true" v-model="item.management_ip"></el-input>
-                  </el-form-item>
-                  <el-form-item label="Service IP">
-                    <el-input size="small" :disabled="true" v-model="item.service_ip"></el-input>
-                  </el-form-item>
-                  <el-form-item label="Vlan">
-                    <el-input size="small" :disabled="true" v-model="item.vlan"></el-input>
-                  </el-form-item>
-                  <el-form-item label="Network">
-                    <el-input size="small" :disabled="true" v-model="item.network"></el-input>
-                  </el-form-item>
-                  <el-form-item label="Target IP">
-                    <el-input size="small" v-model="item.targetip" placeholder="192.168.1.1"></el-input>
-                  </el-form-item>
-                  <div>
-                    <el-button @click="startPing(item,index)" type="text" class="button">Ping Start</el-button>
-                    <br>
-                    <el-button @click="stopPing(item,index)" type="text" class="button">Ping Stop</el-button>
-                    <br>
-                    <el-button @click="startTraceroute(item,index)" type="text" class="button">Traceroute</el-button>
-                  </div>
-                </el-form>
-              </el-card>
-            </el-col>
-          </el-row>
-          <hr>
-
-          <div id="AnalyticsArea">
-            <div id="pie-chart" style="width:100%; height:200px; display: inline-block"></div>
-          </div>
-          <div id="LogArea">
-            <template>
-              <el-tabs v-model="LogActive" @tab-click="ChangeLogs">
-                <el-tab-pane label="Ping" name="Ping">
-                  Ping
-                </el-tab-pane>
-                <el-tab-pane label="Traceroute" name="Traceroute">
-                  Traceroute
-                </el-tab-pane>
-                <el-tab-pane label="Syslog" name="Syslog">
-                  Syslog
-                </el-tab-pane>
-              </el-tabs>
-            </template>
-            <h1>PingLog Viewer</h1>
-            <label>RealTime Monitor</label>
-            <el-switch
-              v-model="MongoSwitch"
-              on-text="On"
-              off-text="Off"
-              @change="changeSwitch()"
-            >
-            </el-switch>
-            <br>
-            <label>RealTime LogLimit</label>
-            <el-slider v-model="logLimit" :max="500" :min="1" :step="1" @change="changeSwitch()"></el-slider>
-            <label>RealTime Relod Interval msec</label>
-            <el-slider v-model="interval" :max="10000" :min="100" :step="100" @change="changeSwitch()"></el-slider>
-            <template>
-              <el-input-number v-model="logStaticLimit" :label="logLimit" :step=10></el-input-number>
-            </template>
-            <el-button @click="ReloadLogArea" size="small" type="success" class="button">Reload</el-button>
-            <div>
-              <h3>Filter Logs</h3>
-              <span>Source Filter</span>
-              <el-input placeholder="Source" prefix-icon="el-icon-search" v-model="filterLogsSource">
-              </el-input>
-              <span>Destnation Filter</span>
-              <el-input placeholder="Destnation" prefix-icon="el-icon-search" v-model="filterLogsDestnation">
-              </el-input>
-              <span>Alive Filter</span>
-              <el-input placeholder="Alive" suffix-icon="el-icon-date" v-model="filterLogsAlive"></el-input>
-            </div>
-
-            <template>
-              <div class="block">
-                <span>TimePicker</span>
-                <el-date-picker
-                  v-model="filterLogsTime"
-                  type="datetimerange"
-                  align="right"
-                  placeholder="Pick a range"
-                  :picker-options="FilterTimeOption">
-                </el-date-picker>
-              </div>
-            </template>
-            <p>TotalLog : {{ totalPinglog }}</p>
-            <p>Dead Count : {{ deadPinglog }}</p>
-            <p>Alive Count : {{ alivePinglog }}</p>
-            <template>
-              <el-table
-                :data="tableData"
-                border
-                style="width: 100%"
-                resizable=true>
-                <el-table-column
-                  prop="source"
-                  label="Source"
-                  width="180"
-                  sortable>
-                </el-table-column>
-                <el-table-column
-                  prop="dest"
-                  label="Destnation"
-                  width="180"
-                  sortable>
-                </el-table-column>
-                <el-table-column
-                  prop="alive"
-                  label="alive"
-                  width="90"
-                  sortable>
-                  <template slot-scope="scope">
-                    <el-tag
-                      :type="scope.row.alive === 'true' ? 'success' : 'danger'"
-                      close-transition>{{scope.row.alive}}</el-tag>
+          <template>
+            <el-tabs v-model="LogActive" @tab-click="ChangeLogs">
+              <el-tab-pane label="Ping" name="Ping">
+                <h1>PingLog Viewer</h1>
+                <div>
+                  <label>RealTime Monitor</label>
+                  <el-switch
+                    v-model="MongoSwitchPing"
+                    active-text="On"
+                    inactive-text="Off"
+                    @change="changeSwitch()"
+                  >
+                  </el-switch>
+                  <br>
+                  <label>RealTime LogLimit</label>
+                  <el-slider v-model="logLimit" :max="500" :min="1" :step="1" @change="changeSwitch()"></el-slider>
+                  <label>RealTime Reload Interval msec</label>
+                  <el-slider v-model="interval" :max="10000" :min="100" :step="100" @change="changeSwitch()"></el-slider>
+                  <template>
+                    <el-input-number v-model="logStaticLimit" :step=10></el-input-number>
                   </template>
-                </el-table-column>
-                <el-table-column
-                  prop="time"
-                  label="time(msec)"
-                  width="110"
-                  sortable>
-                </el-table-column>
-                <el-table-column
-                  prop="timestamp"
-                  label="timestamp"
-                  width="200"
-                  sortable>
-                </el-table-column>
-                <el-table-column
-                  prop="message"
-                  label="message"
-                  sortable>
-                </el-table-column>
-              </el-table>
-            </template>
-          </div>
-          <hr>
-          <div id="syslogArea">
-            <h1> Syslog Viewer</h1>
-            <label>RealTime Monitor</label>
-            <el-switch
-              v-model="MongoSwitch"
-              on-text="On"
-              off-text="Off"
-              @change="changeSwitch">
-            </el-switch>
-            <template>
-              <el-table
-                :data="tableSyslogData"
-                border
-                style="width: 100%"
-                resizable=true>
-                <el-table-column
-                  prop="facility"
-                  label="Facility"
-                  sortable>
-                </el-table-column>
-                <el-table-column
-                  prop="severity"
-                  label="Severity"
-                  sortable>
-                </el-table-column>
-                <el-table-column
-                  prop="tag"
-                  label="Tag"
-                  sortable>
-                </el-table-column>
-                <el-table-column
-                  prop="time"
-                  label="Timestamp"
-                  sortable>
-                </el-table-column>
-                <el-table-column
-                  prop="hostname"
-                  label="Hostname"
-                  sortable>
-                </el-table-column>
-                <el-table-column
-                  prop="addrsss"
-                  label="Adress"
-                  sortable>
-                </el-table-column>
-                </el-table-column>
-                <el-table-column
-                  prop="port"
-                  label="Port"
-                  sortable>
-                </el-table-column>
-                </el-table-column>
-                <el-table-column
-                  prop="size"
-                  label="Size"
-                  sortable>
-                </el-table-column>
-                <el-table-column
-                  prop="msg"
-                  label="Message"
-                  sortable>
-                </el-table-column>
-              </el-table>
-            </template>
-          </div>
-        </el-main>
-      </el-container>
-    </el-container>
+                </div>
+                <el-button @click="ReloadLogArea" size="small" type="success" class="button">Reload</el-button>
+                <div>
+                  <h3>Filter Logs</h3>
+                  <span>Source Filter</span>
+                  <el-input placeholder="Source" prefix-icon="el-icon-search" v-model="filterLogsSource">
+                  </el-input>
+                  <span>Destnation Filter</span>
+                  <el-input placeholder="Destnation" prefix-icon="el-icon-search" v-model="filterLogsDestnation">
+                  </el-input>
+                  <span>Alive Filter</span>
+                  <el-input placeholder="Alive" prefix-icon="el-icon-search" v-model="filterLogsAlive"></el-input>
+                </div>
+
+                <template>
+                  <div class="block">
+                    <span>TimePicker</span>
+                    <el-date-picker
+                      v-model="filterLogsTime"
+                      type="datetimerange"
+                      align="right"
+                      placeholder="Pick a range"
+                      :picker-options="FilterTimeOption">
+                    </el-date-picker>
+                  </div>
+                </template>
+                <p>TotalLog : {{ totalPinglog }}</p>
+                <p>Dead Count : {{ deadPinglog }}</p>
+                <p>Alive Count : {{ alivePinglog }}</p>
+                <template>
+                  <el-table
+                    :data="tableData"
+                    border
+                    style="width: 100%"
+                    resizable=true>
+                    <el-table-column
+                      prop="source"
+                      label="Source"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="source_resolve"
+                      label="SrcResolve"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="dest"
+                      label="Destnation"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="dest_resolve"
+                      label="DstResolve"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="alive"
+                      label="alive"
+                      width="90"
+                      sortable>
+                      <template slot-scope="scope">
+                        <el-tag
+                          :type="scope.row.alive === 'true' ? 'success' : 'danger'"
+                          close-transition>{{scope.row.alive}}</el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column
+                      prop="time"
+                      label="time(msec)"
+                      width="120"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="timestamp"
+                      label="timestamp"
+                      width="200"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="message"
+                      label="message"
+                      sortable>
+                    </el-table-column>
+                  </el-table>
+                </template>
+              </el-tab-pane>
+              <el-tab-pane label="Traceroute" name="Traceroute">
+                <h1>Traceroute Viewer</h1>
+                <label>RealTime Monitor</label>
+                <el-switch
+                  v-model="MongoSwitchTraceroute"
+                  active-text="On"
+                  inactive-text="Off"
+                  @change="changeSwitchTraceroute">
+                </el-switch>
+              </el-tab-pane>
+              <el-tab-pane label="Syslog" name="Syslog">
+                <h1> Syslog Viewer</h1>
+                <label>RealTime Monitor</label>
+                <el-switch
+                  v-model="MongoSwitchSyslog"
+                  active-text="On"
+                  inactive-text="Off"
+                  @change="changeSwitchSyslog">
+                </el-switch>
+                <template>
+                  <el-table
+                    :data="tableSyslogData"
+                    border
+                    style="width: 100%"
+                    resizable=true>
+                    <el-table-column
+                      prop="facility"
+                      label="Facility"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="severity"
+                      label="Severity"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="tag"
+                      label="Tag"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="time"
+                      label="Timestamp"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="hostname"
+                      label="Hostname"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="address"
+                      label="Address"
+                      sortable>
+                    </el-table-column>
+                    </el-table-column>
+                    <el-table-column
+                      prop="port"
+                      label="Port"
+                      sortable>
+                    </el-table-column>
+                    </el-table-column>
+                    <el-table-column
+                      prop="size"
+                      label="Size"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="msg"
+                      label="Message"
+                      sortable>
+                    </el-table-column>
+                  </el-table>
+                </template>
+              </el-tab-pane>
+            </el-tabs>
+          </template>
+        </div>
+      </div>
+    </div>
+
+
 
 
   </body>
