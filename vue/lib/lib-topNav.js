@@ -11,6 +11,9 @@ import mongo          from "../util/mongo";
 // load vagrant util
 import procyon_node   from "../util/procyon-node";
 import {messageArea}  from "../util/message";
+import {nodeTool}       from "../lib/lib-node";
+import {nodeAdd,containerTable,ResultArea,LogArea}       from "../index";
+import {realtimeDashboard}        from "../realtime.js";
 
 // element ui
 import Vue      from 'vue'
@@ -28,10 +31,47 @@ const topNav = new Vue({
   },
   methods: {
     handleSelect(key, keyPath) {
-      console.log(key, keyPath);
+      switch (key) {
+        case "1":
+          // console.log(key,keyPath);
+          nodeTool.displayNodeTool = true;
+          nodeAdd.displayNodeApp = false;
+          containerTable.displayContainerTable = false;
+          ResultArea.displayResultArea = false;
+          realtimeDashboard.displayRealtimeDashboard = false;
+          LogArea.displayLogArea = false;
+          break;
+        case "2":
+          // console.log(key,keyPath);
+          nodeTool.displayNodeTool = false;
+          nodeAdd.displayNodeApp = true;
+          containerTable.displayContainerTable = true;
+          ResultArea.displayResultArea = true;
+          realtimeDashboard.displayRealtimeDashboard = false;
+          LogArea.displayLogArea = false;
+          break;
+        case "3":
+          // console.log(key,keyPath);
+          nodeTool.displayNodeTool = false;
+          nodeAdd.displayNodeApp = false;
+          containerTable.displayContainerTable = false;
+          ResultArea.displayResultArea = false;
+          realtimeDashboard.displayRealtimeDashboard = true;
+          LogArea.displayLogArea = false;
+          break;
+        case "4":
+          // console.log(key,keyPath);
+          nodeTool.displayNodeTool = false;
+          nodeAdd.displayNodeApp = false;
+          containerTable.displayContainerTable = false;
+          ResultArea.displayResultArea = false;
+          realtimeDashboard.displayRealtimeDashboard = false;
+          LogArea.displayLogArea = true;
+          break;
+        default:
+          console.log("default");
+          break;
+      }
     },
-    call(){
-      console.log("test");
-    }
   }
 })

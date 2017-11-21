@@ -26,8 +26,7 @@ const config = {
   ntp:"ntp.nict.jp",
 }
 
-
-const nodeTool = new Vue ({
+export const nodeTool = new Vue ({
   el: "#nodeTool",
   data() {
     return {
@@ -40,32 +39,33 @@ const nodeTool = new Vue ({
       DisableInput:false,
       dialogVisible:false,
       progress:0,
+      displayNodeTool:true,
     }
   },
   methods : {
     bootNode() {
       co(function* () {
         nodeTool.bootnodeDisabled = true; // lock boot button
-        nodeTool.DisableInput = true;
 
         // check exist procyon node
         const status = yield procyon_node.getMachineStatus();
 
         if( status.default.status == "running"){
-          messageArea.$message({message:"Procyon node is already running.",type:"warning"});
-          nodeTool.bootnodeDisabled = false; // release boot button
+          messageArea.$message({message:"Procyon node is already running.",type:"error"});
+          nodeTool.bootnodeDisabled = true; // release boot button
+          nodeTool.DisableInput = true;     // release delete button
         } else{
           messageArea.$message({message:"flash arp",type:"info"});
           procyon_node.flushArptable();
-          messageArea.$message({message:"Booting Procyon node! Please wait about 3 minutes",type:"info"});
-          let bootcnt = 120;
+          messageArea.$message({message:"Booting Procyon node! Please wait about 3 minutes",type:"warning"});
+          let bootcnt = 240;
           const incrementCnt = 0.8;
           const bootTimer = setInterval( () =>{
             bootcnt--;
             nodeTool.progress += incrementCnt;
-          }, 1000);
+          }, 500);
           yield procyon_node.bootNode( () => {
-            messageArea.$message({message:"Procyon node is booted.",type:"info"});
+            console.log("Procyon node is booted.");
           } );
 
           // retry
@@ -79,6 +79,13 @@ const nodeTool = new Vue ({
             bootcnt = 0;
             return procyon_node.setMgmt(nodeTool.nodeIP,nodeTool.nodeGateway, () =>{
               console.log("Management network is created.");
+              procyon_node.setMongo( () => {
+                console.log("Created mongoDB.");
+                messageArea.$message({message:"Ready for Use.",type:"success"});
+                nodeTool.DisableInput = true;
+                nodeTool.progress = 100;
+                clearInterval(bootTimer);
+              });
             })
             // .catch(retry);
             .catch(function (err) {
@@ -88,21 +95,7 @@ const nodeTool = new Vue ({
                 }
                 throw err;
             });
-          })
-          .then(function (value) {
-            procyon_node.setMongo( () => {
-              console.log("Created mongoDB.");
-              messageArea.$message({message:"Ready for Use.",type:"info"});
-              nodeTool.progress = 100;
-            });
-            nodeTool.bootnodeDisabled = false;
-            clearInterval(bootTimer);
-          }, function (err) {
-            console.log("error");
           });
-
-          /////// ツールボックスを開放
-
         }
       });
     },
@@ -122,21 +115,20 @@ const nodeTool = new Vue ({
     },
     deleteNode() {
       nodeTool.dialogVisible = false;
-      messageArea.$message({message:"Delete Procyon node",type:"info"});
-      procyon_node.deleteNode( () => {
+      nodeTool.DisableInput = true;
+      procyon_node.deleteNode( (err) => {
         messageArea.$message({message:"Procyon node is deleted",type:"info"});
         nodeTool.DisableInput = false;
+        nodeTool.bootnodeDisabled = false;   // release bootnode lock
         nodeTool.progress = 0;
       });
     },
     setNTP(){
-      // console.log(config.ntp);
       nodeTool.ntpDisable = true;
-      procyon_node.setNTP(nodeTool.nodeNTP , () => {
+      procyon_node.setNTP(nodeTool.nodeNTP , (err) => {
         messageArea.$message({message:"success setting ntp",type:"info"});
         nodeTool.ntpDisable = false;
       });
-      // console.log("setntp");
     },
   }
 })

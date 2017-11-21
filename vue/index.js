@@ -15,17 +15,6 @@ import 'element-ui/lib/theme-chalk/index.css'
 Vue.use(ElementUI, {locale});
 
 
-// compornent
-// from nodetool import './components/node-tool.vue';
-
-// // root インスタンスを作成する
-// new Vue({
-//   el: '#defalut',
-//   components: { nodetool },
-//   template: '<node-tool>'
-// })
-
-
 import mongo            from "./util/mongo";        // load mongo util about model
 import procyon_node     from "./util/procyon-node"; // load vagrant util
 import { messageArea }  from "./util/message";
@@ -33,8 +22,7 @@ import lib_node         from "./lib/lib-node";
 import lib_app          from "./lib/lib-app";
 import lib_projectTree  from "./lib/lib-projectTree";
 import lib_topNav       from "./lib/lib-topNav";
-import analytics        from "./analytics";
-
+import {realtimeDashboard}        from "./realtime.js";
 
 
 axios.defaults.timeout = 1000;
@@ -60,7 +48,6 @@ function startWatcher() {
 
   watcher.on("message", function (result) {
     co(function* () {
-      // console.log(result);
       const transResult = yield pingLogConvertor(result);
       LogArea.tableData = transResult;
       LogArea.masterData = transResult;
@@ -92,7 +79,7 @@ function pingLogConvertor(result){
         dest_resolve:(result[i].destnation_resolve !== undefined) ? result[i].destnation_resolve.name : "",
         alive:result[i].alive + "",
         time:transTime,
-        timestamp:moment(result[i].timestamp[0],"X").format('YYYY-MM-DD h:mm:ss') + "." + result[i].timestamp[1].toString().slice(0,3),
+        timestamp:moment(result[i].timestamp[0],"X").format('YYYY-MM-DD HH:mm:ss') + "." + result[i].timestamp[1].toString().slice(0,3),
         message:result[i].error + ""
       })
     }
@@ -206,6 +193,8 @@ function addNetwork(existNW,networkCidr,nodeAdd) {
 
 
 
+
+
 const nodeAdd = new Vue ({
   el: "#nodeAdd",
   data() {
@@ -215,9 +204,10 @@ const nodeAdd = new Vue ({
         IPaddr:"172.20.10.0/27",
         IPrange:"172.20.10.8/29",
         gateway:"172.20.10.1",
-        exclude:""
+        exclude:"",
       },
-      addappDisabled:false
+      addappDisabled:false,
+      displayNodeApp:false,
     }
   },
   methods : {
@@ -282,7 +272,8 @@ const nodeAdd = new Vue ({
           vlan:dockerValue.vlan,
           failure:!connectFLG,
           pingdisabled:false,
-          conneted:true
+          conneted:true,
+          checked:false,
         });
 
         containerTable.containerData = ContainerTableValue;
@@ -340,6 +331,7 @@ const nodeAdd = new Vue ({
     }
   }
 })
+
 const containerTable = new Vue({
   el: "#containerTable",
   data () {
@@ -350,7 +342,8 @@ const containerTable = new Vue({
         interval:1000,
         packetsize:54,
         hop:10
-      }
+      },
+      displayContainerTable:false,
     }
   },
   methods: {
@@ -392,7 +385,8 @@ const ResultArea = new Vue ({
       AppData: ContainerTableValue,
       labelPosition: 'top',
       currentDate: new Date(),
-      PingSwitchValue:false
+      PingSwitchValue:false,
+      displayResultArea:false,
     }
   },
   methods: {
@@ -415,7 +409,7 @@ const ResultArea = new Vue ({
         this.sending = false;
         data.pingdisabled = true;
 
-        messageArea.$message({message:"success ping request.",type:"info"});
+        messageArea.$message({message:"success ping request.",type:"success"});
         console.log(res.status, res.statusText, res.data)
       })
       .catch(error => {
@@ -432,7 +426,7 @@ const ResultArea = new Vue ({
       .then(res => {
         this.sending = false
         data.pingdisabled = false; // unlock disable button
-        messageArea.$message({message:"success stopping ping request.",type:"info"});
+        messageArea.$message({message:"success stopping ping request.",type:"success"});
         console.log(res.status, res.statusText, res.data)
       })
       .catch(error => {
@@ -457,12 +451,11 @@ const ResultArea = new Vue ({
       })
       .then(res => {
         this.sending = false
-        messageArea.$message({message:"Success traceroute request.",type:"info"});
-        // console.log(res.status, res.statusText, res.data)
+        messageArea.$message({message:"Success traceroute request.",type:"success"});
       })
       .catch(error => {
         this.sending = false
-        messageArea.$message({message:"fail traceroute request",type:"error"});
+        messageArea.$message({message:"Fail traceroute request",type:"error"});
         throw error
       })
     },
@@ -471,7 +464,7 @@ const ResultArea = new Vue ({
         const dockerName = yield mongo.getDockerName(data.service_ip);
         yield procyon_node.deleteContainer(dockerName);
         yield mongo.deleteDockerNW(dockerName);
-        messageArea.$message({message:"Delete app",type:"info"});
+        messageArea.$message({message:"Success delete app",type:"success"});
         for(i=0; i<ContainerTableValue.length; i++){
             if(ContainerTableValue[i].management_ip == data.management_ip){
                 ContainerTableValue.splice(i, 1);
@@ -548,6 +541,8 @@ const LogArea = new Vue({
       MongoSwitchTraceroute:false,
       hosts:"",
       resolveType:"IP",
+      recordData: [{ ip: '', name: ''}],  // resolve record data
+      displayLogArea:false,
     }
   },
   methods: {
@@ -645,9 +640,9 @@ const LogArea = new Vue({
         }
         // console.log(record);
 
-        yield mongo.registRecord(record, () => {
-          console.log("ok");
-          messageArea.$message({message:"success record registration.",type:"info"});
+        yield mongo.registRecord(record, (x) => {
+          messageArea.$message({message:"success record registration.",type:"success"});
+          LogArea.hosts = "";
         });
       })
     },
@@ -655,17 +650,18 @@ const LogArea = new Vue({
       co(function* () {
         let record = new Array();
 
-        for(let result of results.data){
-          console.log(result);
-          const data = {
-            ip:result[0],
-            name:result[1]
-          }
-          record.push(data);
-        }
-        console.log(record);
+        yield mongo.dropRecord((x) => {
+          messageArea.$message({message:"the record is all deleted.",type:"success"});
+        });
+      })
+    },
+    checkRecord(){
+      co(function* () {
+        console.log("check");
+        // const tmpdata =  yield mongo.getRecord();
+        // console.log(tmpdata);
+        LogArea.recordData =  yield mongo.getRecord();
 
-        yield mongo.registRecord(record);
       })
     }
   },
@@ -758,4 +754,4 @@ const LogArea = new Vue({
   }
 })
 
-// new Vue().$mount('#default')
+export {nodeAdd,containerTable,ResultArea,LogArea};

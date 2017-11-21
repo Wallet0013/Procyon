@@ -299,13 +299,11 @@ export default {
 		return new Promise(function (resolve,reject){
 			const conn = new Client();
 			conn.on('ready', function() {
-				// console.log('Client :: ready');
-				conn.exec(
-					"sudo docker run --name procyon-node-mongo -e TZ=Asia/Tokyo  --net=mgmt_net --ip " + mongoIP + " -d " + mongoApp
-					, function(err, stream) {
+				const command = "sudo docker run --name procyon-node-mongo -e TZ=Asia/Tokyo  --net=mgmt_net --ip " + mongoIP + " -d " + mongoApp;
+				console.log("command:",command);
+				conn.exec(command, function(err, stream) {
 					if (err) throw err;
 					stream.on('close', function(code, signal) {
-						// console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
 						conn.end();
 						callback();
 					}).on('data', function(data) {

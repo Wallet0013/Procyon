@@ -9,18 +9,19 @@ Vue.use(ElementUI, {locale});
 
 import chart          from 'echarts';
 
-const AnalyticsArea = new Vue ({
-  el: "#AnalyticsArea",
+const realtimeDashboard = new Vue ({
+  el: "#realtimeDashboard",
   data() {
     return {
-      xAxis_data:["test","test2"]
+      xAxis_data:["test","test2"],
+      displayRealtimeDashboard:false,
     }
   },
   methods: {
     reloadChart() {
       co(function* () {
         console.log(pieOption.xAxis[0]);
-        pieOption.xAxis[0].data = AnalyticsArea.xAxis_data;
+        pieOption.xAxis[0].data = realtimeDashboard.xAxis_data;
         pieChart.setOption(pieOption);
       })
     }
@@ -81,3 +82,7 @@ var pieOption = {
 };
 // オプションをインスタンスに適用
 pieChart.setOption(pieOption);
+
+
+
+export {realtimeDashboard};

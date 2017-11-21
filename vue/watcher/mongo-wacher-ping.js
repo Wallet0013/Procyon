@@ -8,7 +8,7 @@ const mongo       = require("../util/mongo");
 let db;
 let limit;
 
-function getPingCollection(source,destnation,alive) {
+function getPingCollection(limit,source,destnation,alive) {
   co(function* (){
     try{
       let souceQuery = null;
@@ -44,7 +44,7 @@ process.on("message", function (body) {
       console.log("--- get message");
       limit = Number(body.limit);
       // getPingCollection;
-      setInterval(getPingCollection,body.interval,body.source,body.destnation,body.alive);
+      setInterval(getPingCollection,body.interval,limit,body.source,body.destnation,body.alive);
 
   }).catch(function(err){
     process.on('unhandledRejection', console.log(err));

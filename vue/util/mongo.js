@@ -36,7 +36,7 @@ module.exports = {
 					// console.log("QueryParam",QueryParam);
 					let logs =  db.collection("syslog").aggregate([
 						{$match:QueryParam},
-						{$sort:{_id: -1}},
+						{$sort:{timestamp: -1}},
 						{$lookup:
 					    	{
 					        	from:"resolve",
@@ -46,7 +46,7 @@ module.exports = {
 					    	}
 						},
 						{$unwind:"$address_resolve"},
-						{$limit: 100}
+						{$limit: limit}
 					],function(err, result) {
 						if (err){
 							db.close();
@@ -81,7 +81,7 @@ module.exports = {
 					}
 					let logs =  db.collection("ping").aggregate([
 						{$match:QueryParam},
-						{$sort:{_id: -1}},
+						{$sort:{timestamp: -1}},
 						{$lookup:
 					    	{
 					        	from:"resolve",
@@ -110,7 +110,7 @@ module.exports = {
 				            	preserveNullAndEmptyArrays: true
 			        		}
 				        },
-						{$limit: 100}
+						{$limit: limit}
 					],function(err, result) {
 						if (err){
 							db.close();
@@ -288,6 +288,24 @@ module.exports = {
 
 		});
 	},
+	// get resoleve record
+	getRecord : function getRecord() {
+		return new Promise(function (resolve,reject){
+			co(function* () {
+				const db = yield MongoClient.connect(url);
+
+				// get last docker number
+				const result = yield db.collection("resolve").find().toArray();
+				yield db.close();
+				resolve(result);
+
+
+			}).catch(function(err){
+				process.on('unhandledRejection', console.log(err));
+			});
+
+		});
+	},
 	// check the network is already exist
 	existNetwork : function existNetwork(value) {
 		return new Promise(function (resolve,reject){
@@ -364,6 +382,23 @@ module.exports = {
 
 				db.collection("resolve").insert(record);
 				// console.log(record);
+				yield db.close();
+				resolve(0);
+				callback();
+
+			}).catch(function(err){
+				process.on('unhandledRejection', console.log(err));
+			});
+
+		});
+	},
+	dropRecord : function dropRecord(callback){
+		return new Promise(function (resolve,reject){
+			co(function* () {
+				const db = yield MongoClient.connect(url);
+
+				yield db.collection("resolve").remove();
+
 				yield db.close();
 				resolve(0);
 				callback();

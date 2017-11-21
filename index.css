@@ -1,0 +1,100 @@
+html,body{
+	margin: 0px!important;
+	height: 100%;
+}
+
+
+.sidebar {
+	position: fixed;
+	width: 25%;
+	top: 0;
+	bottom: 0;
+	background: linear-gradient(#6060e0, #8060e0);
+
+	z-index: 500;
+	box-shadow: 0px 3px 15px rgba(0,0,0,0.2);
+}
+
+.sidebar-contents{
+	margin: 10px;
+}
+
+.contents{
+	margin-left: 25%;
+
+	overflow-y: scroll;
+	z-index: 400;
+}
+
+/*delete scrollbar*/
+.contents::-webkit-scrollbar {
+  display: none;
+}
+
+.contents-header{
+	position: fixed;
+	width: 100%;
+	z-index: 300;
+	box-shadow: 0px 2px 15px rgba(0,0,0,0.2);
+}
+
+.contents-body{
+	margin-top: 60px;
+	/*height: 100%;*/
+	padding: 15px;
+	z-index: 200;
+	/*background: linear-gradient(#fff, #f4f4fd);*/
+}
+
+label{
+	color:#5a5e66
+}
+
+h2.title{
+	color: #FAFAFA;
+}
+
+h2,h3.title-grey{
+	color: #5A5E66;
+}
+
+div.el-card.is-pinging{
+	/*background:#e0f9e0;*/
+	border:solid thin #60e060;
+}
+div.el-card.is-stop{
+	border:solid thin #e06060;
+
+}
+
+form.container-from > div.el-form-item{
+	margin-bottom: 2px !important;
+}
+form.container-from > div.el-form-item > label.el-form-item__label{
+	padding-bottom: 2px !important;
+}
+
+.pingOption-input{
+	width: 80px !important;
+}
+
+form.app-form{
+	width: 50%;
+}
+
+
+/*//////////////////////*/
+/*overwrite element-ui*/
+.el-tree {
+	box-shadow: 1px 1px 2px 2px rgba(0, 0, 0, 0.2) inset;
+	background: rgba(66,66,66,0)!important;
+	color: #FAFAFA!important;
+}
+.el-tree-node__content:hover,.el-tree-node__content:focus {
+	background-color: #616161;
+	color: #6060e0;
+	opacity: 0.5;
+}
+.el-menu--horizontal {
+	border-bottom: solid 0px #e6e6e6!important;
+}
