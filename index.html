@@ -5,6 +5,7 @@
     <title>Procyon</title>
     <script src="./node_modules/echarts/dist/echarts.js"></script>
     <link rel="stylesheet" href="./index.css">
+    <link href='https://fonts.googleapis.com/css?family=Muli' rel='stylesheet' type='text/css'>
   </head>
   <body>
     <div class="header">
@@ -31,6 +32,7 @@
             >
           </el-tree>
         </div>
+        <div id="treeView"></div>
       </div>
       <div class="contents">
         <div id=topNav class="contents-header">
@@ -52,8 +54,6 @@
             </el-alert>
             <h2 class="title-grey"> Procyon Node Utilities </h2>
             <el-form label-width="100px">
-              <label>Booting Progress bar</label>
-              <el-progress :percentage="progress" :show-text="false" ></el-progress>
               <el-form-item label="Node IP">
                 <el-input placeholder="IP : 192.168.1.1/24" v-model="nodeIP" v-bind:disabled="DisableInput"> </el-input>
               </el-form-item>
@@ -67,6 +67,7 @@
               <el-button v-bind:disabled="!DisableInput" type="primary" @click="setNTP" v-bind:disabled="ntpDisable">Set NTP</el-button>
               <el-button v-bind:disabled="!DisableInput" type="danger" @click="dialogVisible = true">DeleteNode</el-button>
             </el-form>
+            <el-progress class="progress" :percentage="progress" :show-text="false" ></el-progress>
             <el-dialog
               title="Delete Caution"
               :visible.sync="dialogVisible">
@@ -82,30 +83,27 @@
             <el-alert
               title="What is the App ?"
               type="info"
-              description="The App is ping or traceroute client.App have dedicated IP Address.
+              description="The App is ping or traceroute client. The App have dedicated IP Address.
               Basically The App must have only 1 ping target.
               App provide syslog server if you need."
               show-icon>
             </el-alert>
             <h2 class="title-grey">App Factory</h2>
-            <el-form  class="app-form"  label-width="80px">
+            <el-form  class="app-form"  label-width="90px" :rules="rules">
               <el-form-item label="VLAN">
                <el-input placeholder="VLAN : 100" v-model="form.vlan"> </el-input>
               </el-form-item>
-              <el-form-item  label="Network">
-                <el-input placeholder="Network : 192.168.1.0/24" v-model="form.IPaddr"
-                  :rules="[
-                  { required: true, message: 'age is required'},
-                  { type: 'number', message: 'age must be a number'}]"></el-input>
+              <el-form-item  label="Network" prop="cidr_req">
+                <el-input placeholder="Network : 192.168.1.0/24" v-model="form.IPaddr"></el-input>
               </el-form-item>
-              <el-form-item  label="IP Range">
-               <el-input placeholder="IP Range : 192.168.1.0/24" v-model="form.IPrange"> </el-input>
+              <el-form-item  label="IP Range" prop="cidr_req">
+               <el-input placeholder="IP Range : 192.168.1.0/24" v-model="form.IPrange"></el-input>
               </el-form-item>
-              <el-form-item label="Gateway">
-                <el-input placeholder="Gateway : 192.168.1.254" v-model="form.gateway"> </el-input>
+              <el-form-item label="Gateway" prop="ip_req">
+                <el-input placeholder="Gateway : 192.168.1.254" v-model="form.gateway"></el-input>
               </el-form-item>
-              <el-form-item label="Exclude IP">
-                <el-input placeholder="Exclude : 192.168.1.1" v-model="form.exclude"> </el-input>
+              <el-form-item label="Exclude IP" prop="ip">
+                <el-input placeholder="Exclude : 192.168.1.1" v-model="form.exclude"></el-input>
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" @click="addApp('app')" v-bind:disabled="addappDisabled">Add App</el-button>
@@ -136,7 +134,7 @@
           <el-row id="ResultArea" v-show="displayResultArea">
             <h3 class="title-grey">App Client List</h3>
             <el-col :span="4" v-for="(item, index) in AppData" :key="index" :offset="1">
-              <el-card v-bind:class="{'is-pinging':item.pingdisabled,'is-stop':!item.pingdisabled}" :body-style="{ padding: '10px' }">
+              <el-card v-bind:class="{'is-pinging':item.pingdisabled,'is-ready':!item.pingdisabled}" :body-style="{ padding: '10px' }">
                 <el-checkbox v-model="item.checked" label="Select" border></el-checkbox>
                 <el-tag type="success" v-if="item.connected" >Connected</el-tag>
                 <el-tag type="danger" v-else="item.connected" >Failure</el-tag>
@@ -172,19 +170,20 @@
             <el-alert
               title="What is the Realtime ?"
               type="info"
-              description="The Realtime Dashboard is realtime monitor of ping logs."
+              description="The Realtime Dashboard is realtime monitor of ping,traceroute logs to visualize.
+              I assume that it check dead time by source-dest."
               show-icon>
             </el-alert>
             <h2 class="title-grey">RealTime Dashboard</h2>
             <el-button @click="reloadChart()" type="primary" class="button">Reload</el-button>
-            <div id="pie-chart" style="width:100%; height:200px;"></div>
+            <div id="realtime"></div>
           </div>
 
           <div id="LogArea" v-show="displayLogArea">
             <el-alert
               title="What is the Analytics ?"
               type="info"
-              description="The Analytics static analytics"
+              description="The Analytics is analyze ping,traceroute,syslog logs. You set range logs at first. So you appear visualize graph. Next you set"
               show-icon>
             </el-alert>
             <h2 class="title-grey">Analytics</h2>
@@ -202,6 +201,7 @@
               </el-popover>
               <el-button @click="checkRecord()" v-popover:recordtable type="success" size="small" round>CheckReg</el-button>
               <el-input
+                class="resolve-text"
                 type="textarea"
                 autosize
                 :autosize="{ minRows: 4}"
@@ -211,19 +211,15 @@
                 10.10.10.10 gaisetsu1"
                 v-model="hosts">
               </el-input>
-
               <el-button @click="registRecord()" type="primary" >Regist</el-button>
-
               <el-button @click="resetRecord()" type="danger" >UnRegist</el-button>
-
-
             </div>
             <template>
               <el-tabs v-model="LogActive" @tab-click="ChangeLogs" type="card">
                 <el-tab-pane label="Ping" name="Ping">
-                  <h3 class="title-grey">PingLog Viewer</h3>
                   <div>
-                    <label>RealTime Monitor</label>
+                    <h3 class="title-grey">PingLog Viewer</h3>
+                    <label>Monitor</label>
                     <el-switch
                       v-model="MongoSwitchPing"
                       active-text="On"
@@ -232,44 +228,71 @@
                     >
                     </el-switch>
                     <br>
-                    <label>RealTime LogLimit</label>
-                    <el-slider v-model="logLimit" :max="500" :min="1" :step="1" @change="changeSwitch()"></el-slider>
-                    <label>RealTime Reload Interval msec</label>
-                    <el-slider v-model="interval" :max="10000" :min="100" :step="100" @change="changeSwitch()"></el-slider>
-                    <template>
-                      <el-input-number v-model="logStaticLimit" :step=10></el-input-number>
-                    </template>
-                  </div>
-                  <el-button @click="ReloadLogArea" size="small" type="success" class="button">Reload</el-button>
-                  <div>
-                    <h3 class="title-grey">Filter Logs</h3>
-                    <span>Source Filter</span>
-                    <el-input placeholder="Source" prefix-icon="el-icon-search" v-model="filterLogsSource">
-                    </el-input>
-                    <span>Destnation Filter</span>
-                    <el-input placeholder="Destnation" prefix-icon="el-icon-search" v-model="filterLogsDestnation">
-                    </el-input>
-                    <span>Alive Filter</span>
-                    <el-input placeholder="Alive" prefix-icon="el-icon-search" v-model="filterLogsAlive"></el-input>
-                  </div>
-
-                  <template>
-                    <div class="block">
-                      <span>TimePicker</span>
-                      <el-date-picker
-                        v-model="filterLogsTime"
-                        type="datetimerange"
-                        align="right"
-                        placeholder="Pick a range"
-                        :picker-options="FilterTimeOption">
-                      </el-date-picker>
+                    <div class="slider">
+                     <label>LogLimit</label>
+                     <el-slider class="slider-70" v-model="logLimit" :max="500" :min="1" :step="1" @change="changeSwitch()"></el-slider> <br>
                     </div>
-                  </template>
-                  <p>TotalLog : {{ totalPinglog }}</p>
-                  <p>Dead Count : {{ deadPinglog }}</p>
-                  <p>Alive Count : {{ alivePinglog }}</p>
+                    <div class="slider">
+                      <label>Reload Interval msec</label>
+                      <el-slider class="slider-70" v-model="interval" :max="10000" :min="100" :step="100" @change="changeSwitch()"></el-slider> <br>
+                    </div>
+                    <el-input-number v-model="logStaticLimit" :step=10></el-input-number>
+                    <el-button @click="ReloadLogArea" type="success" class="button">Reload</el-button>
+                  </div>
+                  <section class="filter">
+                    <h3 class="title-grey">Filter Logs</h3>
+                    <div class="filter-input">
+                      <label>Source</label>
+                      <el-input placeholder="Source" prefix-icon="el-icon-search" v-model="filterLogsSource"></el-input>
+                    </div>
+                    <div class="filter-input">
+                      <label>Destnation</label>
+                      <el-input placeholder="Destnation" prefix-icon="el-icon-search" v-model="filterLogsDestnation"></el-input>
+                    </div>
+                    <div class="filter-input">
+                      <label>Alive</label>
+                      <el-input placeholder="Alive" prefix-icon="el-icon-search" v-model="filterLogsAlive"></el-input>
+                    </div>
+                    <div class="filter-input">
+                      <label>Timestamp</label>
+                      <el-input placeholder="Timestamp" prefix-icon="el-icon-search" v-model="filterLogsTime"></el-input>
+                    </div>
+                    <div class="filter-input">
+                      <label>Messages</label>
+                      <el-input placeholder="Messages" prefix-icon="el-icon-search" v-model="filterLogsMessage"></el-input>
+                    </div>
+                    <template>
+                      <div class="filter-input">
+                        <template>
+                          <div class="block">
+                            <label>Timestamp</label>
+                            <el-date-picker
+                              v-model="filterLogsTimedate"
+                              type="daterange"
+                              start-placeholder="Start Date"
+                              end-placeholder="End Date">
+                            </el-date-picker>
+                              <el-time-picker
+                              is-range
+                              v-model="filterLogsTimetime"
+                              range-separator="To"
+                              start-placeholder="Start time"
+                              end-placeholder="End time">
+                            </el-time-picker>
+                          </div>
+                        </template>
+                      </div>
+                    </template>
+                  </section>
+                  <br>
+                  <div>
+                    <p>TotalLog : {{ totalPinglog }}</p>
+                    <p>Dead Count : {{ deadPinglog }}</p>
+                    <p>Alive Count : {{ alivePinglog }}</p>
+                  </div>
                   <template>
                     <el-table
+                      class="cluster-table"
                       :data="tableData"
                       border
                       style="width: 100%"
@@ -336,7 +359,7 @@
                   </el-switch>
                 </el-tab-pane>
                 <el-tab-pane label="Syslog" name="Syslog">
-                  <h3> Syslog Viewer</h3>
+                  <h3 class="title-grey"> Syslog Viewer</h3>
                   <label>RealTime Monitor</label>
                   <el-switch
                     v-model="MongoSwitchSyslog"
@@ -406,8 +429,6 @@
         </div>
       </div>
     </div>
-
-
 
 
   </body>

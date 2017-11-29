@@ -14,7 +14,6 @@ import locale         from 'element-ui/lib/locale/lang/ja';
 import 'element-ui/lib/theme-chalk/index.css'
 Vue.use(ElementUI, {locale});
 
-
 import mongo            from "./util/mongo";        // load mongo util about model
 import procyon_node     from "./util/procyon-node"; // load vagrant util
 import { messageArea }  from "./util/message";
@@ -31,7 +30,6 @@ let ContainerTableValue = new Array();
 
 let watcher = child_process.fork("./vue/watcher/mongo-wacher-ping.js");
 let syslogWatcher = child_process.fork("./vue/watcher/mongo-wacher-syslog.js");
-
 
 // print mongodb ping data process
 function startWatcher() {
@@ -79,7 +77,7 @@ function pingLogConvertor(result){
         dest_resolve:(result[i].destnation_resolve !== undefined) ? result[i].destnation_resolve.name : "",
         alive:result[i].alive + "",
         time:transTime,
-        timestamp:moment(result[i].timestamp[0],"X").format('YYYY-MM-DD HH:mm:ss') + "." + result[i].timestamp[1].toString().slice(0,3),
+        timestamp:moment(result[i].timestamp[0],"X").format('YYYY-MM-DD HH:mm:ss') + "." + ( "000000" + result[i].timestamp[1].toString()).slice(-6).slice(0,3),
         message:result[i].error + ""
       })
     }
@@ -144,11 +142,12 @@ function checkAppStatus(target){
       axios.get(uri)
       .then(res => {
         this.sending = false;
-        // console.log(res.status, res.statusText, res.data)
+        console.log("success check app status");
         return 0;
       })
       .catch(error => {
         this.sending = false
+        console.log("failed check app status");
         throw error
       })
     });
@@ -191,10 +190,6 @@ function addNetwork(existNW,networkCidr,nodeAdd) {
   });
 }
 
-
-
-
-
 const nodeAdd = new Vue ({
   el: "#nodeAdd",
   data() {
@@ -208,6 +203,17 @@ const nodeAdd = new Vue ({
       },
       addappDisabled:false,
       displayNodeApp:false,
+      rules : {
+        cidr_req: [
+          { type:'number', required: true, message: 'It is not CIDR format', trigger: 'change' },
+        ],
+        ip_req: [
+          { required: true, message: 'It is not IP format', trigger: 'change' },
+        ],
+        ip: [
+          { type:'number', required: false, message: 'It is not IP format', trigger: 'change' },
+        ],
+      }
     }
   },
   methods : {
@@ -254,23 +260,24 @@ const nodeAdd = new Vue ({
         dockerValue.service_ip = tmp.split("\n")[1];
         mongo.insertDockerNW(dockerValue);
 
-        let connectFLG = false;
-        // check conectibity
-        try{
-          setTimeout(checkAppStatus,3000,dockerValue.management_ip);
-          connectFLG = true;
-          console.log(connectFLG , !connectFLG);
-          // console.log(tet);
-        } catch(e){
-
-        }
+        // let connectFLG = false;
+        // // check conectibity
+        // try{
+        //   setTimeout(checkAppStatus,5000,dockerValue.management_ip);
+        //   connectFLG = true;
+        //   console.log(connectFLG , !connectFLG);
+        //   // console.log(tet);
+        // } catch(e){
+        //   connectFLG
+        // }
 
         ContainerTableValue.push({
           management_ip:dockerValue.management_ip,
           service_ip:dockerValue.service_ip,
           network:dockerValue.ip,
           vlan:dockerValue.vlan,
-          failure:!connectFLG,
+          targetip:"",
+          // failure:!connectFLG,
           pingdisabled:false,
           conneted:true,
           checked:false,
@@ -494,7 +501,15 @@ const LogArea = new Vue({
       filterLogsSource:"",
       filterLogsDestnation:"",
       filterLogsAlive:"",
+      filterLogsMessage:"",
       filterLogsTime:"",
+      filterLogsTimedate:"",
+      filterLogsTimetime:"",
+      sourceFLG:0,
+      destFLG:0,
+      aliveFLG:0,
+      messageFLG:0,
+      timeFLG:0,
       FilterTimeOption: {
         shortcuts: [{
           text: 'Yesterday',
@@ -626,19 +641,21 @@ const LogArea = new Vue({
       co(function* () {
         let record = new Array();
 
+        console.log(LogArea.hosts);
+        if (LogArea.hosts == "") {
+          messageArea.$message({message:"input resolve record",type:"error"});
+          return 1;
+        }
+
         const results = Papa.parse(LogArea.hosts,{delimiter: " "});
 
-        // console.log(results);
-
         for(let result of results.data){
-          // console.log(result);
           const data = {
             ip:result[0],
             name:result[1]
           }
           record.push(data);
         }
-        // console.log(record);
 
         yield mongo.registRecord(record, (x) => {
           messageArea.$message({message:"success record registration.",type:"success"});
@@ -657,101 +674,172 @@ const LogArea = new Vue({
     },
     checkRecord(){
       co(function* () {
-        console.log("check");
-        // const tmpdata =  yield mongo.getRecord();
-        // console.log(tmpdata);
         LogArea.recordData =  yield mongo.getRecord();
 
       })
-    }
+    },
+    filterdata(TargetData){
+      let find_logs = new Array();
+
+      if(LogArea.sourceFLG == 1){
+        for(let data of TargetData){
+          let findFlg = 0;
+
+          if(data.source.indexOf(this.filterLogsSource) >= 0){ findFlg = 1; }
+          if(data.source_resolve.indexOf(this.filterLogsSource) >= 0){ findFlg = 1; }
+
+          if(findFlg >= 1){ find_logs.push(data); }
+        }
+      } else{
+        find_logs  = TargetData;
+      }
+
+      if(LogArea.destFLG == 1){
+        let filterdata = new Array();
+
+        for(let data of find_logs){
+          let findFlg = 0;
+
+          if(data.dest.indexOf(this.filterLogsDestnation) >= 0){ findFlg = 1; }
+          if(data.dest_resolve.indexOf(this.filterLogsDestnation) >= 0){ findFlg = 1; }
+
+          if(findFlg >= 1){ filterdata.push(data); }
+        }
+        find_logs = filterdata;
+      }
+
+      if(LogArea.aliveFLG == 1){
+        let filterdata = new Array();
+        for(let data of find_logs){
+          let findFlg = 0;
+
+          if(data.alive.indexOf(this.filterLogsAlive) >= 0){ findFlg = 1; }
+
+          if(findFlg >= 1){ filterdata.push(data); }
+        }
+        find_logs = filterdata;
+      }
+
+      if(LogArea.timeFLG == 1){
+        let filterdata = new Array();
+        for(let data of find_logs){
+          let findFlg = 0;
+
+          if(data.timestamp.indexOf(this.filterLogsTime) >= 0){ findFlg = 1; }
+
+          if(findFlg >= 1){ filterdata.push(data); }
+        }
+        find_logs = filterdata;
+      }
+
+      if(LogArea.messageFLG == 1){
+        let filterdata = new Array();
+        for(let data of find_logs){
+          let findFlg = 0;
+
+          if(data.message.indexOf(this.filterLogsMessage) >= 0){ findFlg = 1; }
+
+          if(findFlg >= 1){ filterdata.push(data); }
+        }
+        find_logs = filterdata;
+      }
+
+      if(
+        LogArea.sourceFLG   == 0 &&
+        LogArea.destFLG     == 0 &&
+        LogArea.aliveFLG    == 0 &&
+        LogArea.timeFLG     == 0 &&
+        LogArea.messageFLG  == 0
+      ){
+        find_logs = LogArea.masterData;
+      }
+
+      return find_logs;
+    },
   },
   watch:{
     filterLogsSource: function(e){
       const TargetData = LogArea.masterData;
 
       if(this.filterLogsSource == ""){
-        return LogArea.tableData = LogArea.masterData;
+        LogArea.sourceFLG = 0;
+        LogArea.tableData = LogArea.filterdata(TargetData);
+        return analyticsPingLog(TargetData);
       }
 
-      let find_logs = new Array();
-      for(let data of TargetData){
-        let findFlg = 0;
-        if(data.source.indexOf(this.filterLogsSource) >= 0){ findFlg = 1;}
-        // if(data.message.indexOf(this.filterLogsSouce) >= 0){ findFlg = 1; }
-
-        if(findFlg >= 1){
-          find_logs.push(data);
-        }
-      }
+      LogArea.sourceFLG = 1;
+      let find_logs = LogArea.filterdata(TargetData);
       LogArea.tableData = find_logs;
+
+
       analyticsPingLog(find_logs);
     },
     filterLogsDestnation: function(e){
       const TargetData = LogArea.masterData;
 
       if(this.filterLogsDestnation == ""){
-        return LogArea.tableData = LogArea.masterData;
+        LogArea.destFLG = 0;
+        LogArea.tableData = LogArea.filterdata(TargetData);
+        return analyticsPingLog(LogArea.tableData);
       }
 
+      LogArea.destFLG = 1;
 
-      let find_logs = new Array();
-      for(let data of TargetData){
-        let findFlg = 0;
-        if(data.dest.indexOf(this.filterLogsDestnation) >= 0){ findFlg = 1; }
-
-        if(findFlg >= 1){
-          find_logs.push(data);
-        }
-      }
+      let find_logs = LogArea.filterdata(TargetData);
       LogArea.tableData = find_logs;
+
       analyticsPingLog(find_logs);
     },
     filterLogsAlive: function(e){
       const TargetData = LogArea.masterData;
 
       if(this.filterLogsAlive == ""){
-        return LogArea.tableData = LogArea.masterData;
+        LogArea.aliveFLG = 0;
+        LogArea.tableData = LogArea.filterdata(TargetData);
+        return analyticsPingLog(LogArea.tableData);
       }
 
-      let find_logs = new Array();
-      for(let data of TargetData){
-        let findFlg = 0;
-        if(data.alive.indexOf(this.filterLogsAlive) >= 0){ findFlg = 1; }
+      LogArea.aliveFLG = 1;
 
-        if(findFlg >= 1){
-          find_logs.push(data);
-        }
-      }
+      let find_logs = LogArea.filterdata(TargetData);
       LogArea.tableData = find_logs;
+
       analyticsPingLog(find_logs);
     },
     filterLogsTime: function(e){
-      const startTime = moment(e[0]).format();
-      const endTime = moment(e[1]).format();
-      console.log(startTime);
-      console.log(endTime);
-
       const TargetData = LogArea.masterData;
 
       if(this.filterLogsTime == ""){
-        console.log("data");
-        return LogArea.tableData = LogArea.masterData;
+        LogArea.timeFLG = 0;
+        LogArea.tableData = LogArea.filterdata(TargetData);
+        return analyticsPingLog(LogArea.tableData);
       }
 
-      let find_logs = new Array();
-      for(let data of TargetData){
-        // let findFlg = 0;
-        // if(data.alive.indexOf(this.filterLogsTime) >= 0){ findFlg = 1; }
+      LogArea.timeFLG = 1;
 
-        // if(findFlg >= 1){
-        //   find_logs.push(data);
-        // }
-        console.log(data.timestamp);
-      }
+      let find_logs = LogArea.filterdata(TargetData);
       LogArea.tableData = find_logs;
+
       analyticsPingLog(find_logs);
-    }
-  }
+    },
+    filterLogsMessage: function(e){
+      const TargetData = LogArea.masterData;
+
+      if(this.filterLogsMessage == ""){
+        LogArea.messageFLG = 0;
+        LogArea.tableData = LogArea.filterdata(TargetData);
+        return analyticsPingLog(LogArea.tableData);
+      }
+
+      LogArea.messageFLG = 1;
+
+      let find_logs = LogArea.filterdata(TargetData);
+      LogArea.tableData = find_logs;
+
+      analyticsPingLog(find_logs);
+    },
+
+  },
 })
 
 export {nodeAdd,containerTable,ResultArea,LogArea};

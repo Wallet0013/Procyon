@@ -18,6 +18,7 @@
     "element-ui": "^2.0.5",
     "file-loader": "^1.1.5",
     "ip": "^1.1.5",
+    "lodash": "^4.17.4",
     "moment": "^2.19.2",
     "mongodb": "^2.2.33",
     "node-ssh": "^5.0.0",
@@ -34,5 +35,9 @@
     "vue-loader": "^13.5.0",
     "vue-template-compiler": "^2.5.6",
     "webpack": "^3.8.1"
+  },
+  "devDependencies": {
+    "inspire-tree": "^4.1.0",
+    "inspire-tree-dom": "^3.0.2"
   }
 }

@@ -59,7 +59,7 @@ export const nodeTool = new Vue ({
           procyon_node.flushArptable();
           messageArea.$message({message:"Booting Procyon node! Please wait about 3 minutes",type:"warning"});
           let bootcnt = 240;
-          const incrementCnt = 0.8;
+          const incrementCnt = 0.4;
           const bootTimer = setInterval( () =>{
             bootcnt--;
             nodeTool.progress += incrementCnt;
