@@ -214,7 +214,6 @@
               <el-button @click="registRecord()" type="primary" >Regist</el-button>
               <el-button @click="resetRecord()" type="danger" >UnRegist</el-button>
             </div>
-            <template>
               <el-tabs v-model="LogActive" @tab-click="ChangeLogs" type="card">
                 <el-tab-pane label="Ping" name="Ping">
                   <div>
@@ -261,28 +260,24 @@
                       <label>Messages</label>
                       <el-input placeholder="Messages" prefix-icon="el-icon-search" v-model="filterLogsMessage"></el-input>
                     </div>
-                    <template>
-                      <div class="filter-input">
-                        <template>
-                          <div class="block">
-                            <label>Timestamp</label>
-                            <el-date-picker
-                              v-model="filterLogsTimedate"
-                              type="daterange"
-                              start-placeholder="Start Date"
-                              end-placeholder="End Date">
-                            </el-date-picker>
-                              <el-time-picker
-                              is-range
-                              v-model="filterLogsTimetime"
-                              range-separator="To"
-                              start-placeholder="Start time"
-                              end-placeholder="End time">
-                            </el-time-picker>
-                          </div>
-                        </template>
+                    <div class="filter-input">
+                      <div class="block">
+                        <label>Timestamp</label>
+                        <el-date-picker
+                          v-model="filterLogsTimedate"
+                          type="daterange"
+                          start-placeholder="Start Date"
+                          end-placeholder="End Date">
+                        </el-date-picker>
+                        <el-time-picker
+                          is-range
+                          v-model="filterLogsTimetime"
+                          range-separator="To"
+                          start-placeholder="Start time"
+                          end-placeholder="End time">
+                        </el-time-picker>
                       </div>
-                    </template>
+                    </div>
                   </section>
                   <br>
                   <div>
@@ -290,63 +285,61 @@
                     <p>Dead Count : {{ deadPinglog }}</p>
                     <p>Alive Count : {{ alivePinglog }}</p>
                   </div>
-                  <template>
-                    <el-table
-                      class="cluster-table"
-                      :data="tableData"
-                      border
-                      style="width: 100%"
-                      resizable=true>
-                      <el-table-column
-                        prop="source"
-                        label="Source"
-                        sortable>
-                      </el-table-column>
-                      <el-table-column
-                        prop="source_resolve"
-                        label="SrcResolve"
-                        sortable>
-                      </el-table-column>
-                      <el-table-column
-                        prop="dest"
-                        label="Destnation"
-                        sortable>
-                      </el-table-column>
-                      <el-table-column
-                        prop="dest_resolve"
-                        label="DstResolve"
-                        sortable>
-                      </el-table-column>
-                      <el-table-column
-                        prop="alive"
-                        label="alive"
-                        width="90"
-                        sortable>
-                        <template slot-scope="scope">
-                          <el-tag
-                            :type="scope.row.alive === 'true' ? 'success' : 'danger'"
-                            close-transition>{{scope.row.alive}}</el-tag>
-                        </template>
-                      </el-table-column>
-                      <el-table-column
-                        prop="time"
-                        label="time(msec)"
-                        width="120"
-                        sortable>
-                      </el-table-column>
-                      <el-table-column
-                        prop="timestamp"
-                        label="timestamp"
-                        width="200"
-                        sortable>
-                      </el-table-column>
-                      <el-table-column
-                        prop="message"
-                        label="message"
-                        sortable>
-                      </el-table-column>
-                    </el-table>
-                  </template>
+                  <el-table
+                    class="cluster-table"
+                    :data="tableData"
+                    border
+                    style="width: 100%"
+                    resizable=true>
+                    <el-table-column
+                      prop="source"
+                      label="Source"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="source_resolve"
+                      label="SrcResolve"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="dest"
+                      label="Destnation"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="dest_resolve"
+                      label="DstResolve"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="alive"
+                      label="alive"
+                      width="90"
+                      sortable>
+                      <template slot-scope="scope">
+                        <el-tag
+                          :type="scope.row.alive === 'true' ? 'success' : 'danger'"
+                          close-transition>{{scope.row.alive}}</el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column
+                      prop="time"
+                      label="time(msec)"
+                      width="120"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="timestamp"
+                      label="timestamp"
+                      width="200"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="message"
+                      label="message"
+                      sortable>
+                    </el-table-column>
+                  </el-table>
                 </el-tab-pane>
                 <el-tab-pane label="Traceroute" name="Traceroute">
                   <h3 class="title-grey">Traceroute Viewer</h3>
@@ -367,64 +360,61 @@
                     inactive-text="Off"
                     @change="changeSwitchSyslog">
                   </el-switch>
-                  <template>
-                    <el-table
-                      :data="tableSyslogData"
-                      border
-                      style="width: 100%"
-                      resizable=true>
-                      <el-table-column
-                        prop="facility"
-                        label="Facility"
-                        sortable>
-                      </el-table-column>
-                      <el-table-column
-                        prop="severity"
-                        label="Severity"
-                        sortable>
-                      </el-table-column>
-                      <el-table-column
-                        prop="tag"
-                        label="Tag"
-                        sortable>
-                      </el-table-column>
-                      <el-table-column
-                        prop="time"
-                        label="Timestamp"
-                        sortable>
-                      </el-table-column>
-                      <el-table-column
-                        prop="hostname"
-                        label="Hostname"
-                        sortable>
-                      </el-table-column>
-                      <el-table-column
-                        prop="address"
-                        label="Address"
-                        sortable>
-                      </el-table-column>
-                      </el-table-column>
-                      <el-table-column
-                        prop="port"
-                        label="Port"
-                        sortable>
-                      </el-table-column>
-                      </el-table-column>
-                      <el-table-column
-                        prop="size"
-                        label="Size"
-                        sortable>
-                      </el-table-column>
-                      <el-table-column
-                        prop="msg"
-                        label="Message"
-                        sortable>
-                      </el-table-column>
-                    </el-table>
-                  </template>
+                  <el-table
+                    :data="tableSyslogData"
+                    border
+                    style="width: 100%"
+                    resizable=true>
+                    <el-table-column
+                      prop="facility"
+                      label="Facility"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="severity"
+                      label="Severity"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="tag"
+                      label="Tag"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="time"
+                      label="Timestamp"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="hostname"
+                      label="Hostname"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="address"
+                      label="Address"
+                      sortable>
+                    </el-table-column>
+                    </el-table-column>
+                    <el-table-column
+                      prop="port"
+                      label="Port"
+                      sortable>
+                    </el-table-column>
+                    </el-table-column>
+                    <el-table-column
+                      prop="size"
+                      label="Size"
+                      sortable>
+                    </el-table-column>
+                    <el-table-column
+                      prop="msg"
+                      label="Message"
+                      sortable>
+                    </el-table-column>
+                  </el-table>
                 </el-tab-pane>
               </el-tabs>
-            </template>
           </div>
         </div>
       </div>

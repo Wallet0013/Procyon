@@ -263,6 +263,52 @@ export default {
 
 		});
 	},
+	addNetwork_withvlan(number,ip,vlan,range,gateway,exclude) {
+		return new Promise(function (resolve,reject){
+			const sleepTime = 1;
+			const value = {
+				network_id : number,
+				vlan : vlan,
+				ip: ip,
+				gateway: gateway,
+				network_name: "dedicated_net" + number,
+				timestamp:moment().format()
+			}
+
+			let command;
+			if(range){
+				command = "sudo docker network create --driver macvlan --subnet=" + ip + " --gateway=" + gateway + " --ip-range=" + range + " -o parent=enp0s8." + vlan + " dedicated_net" + number + " ; sleep " + sleepTime
+			}else{
+				command = "sudo docker network create --driver macvlan --subnet=" + ip + " --gateway=" + gateway + " -o parent=enp0s8." + vlan  + " dedicated_net" + number + " ; sleep " + sleepTime
+			}
+
+			console.log("command: ",command);
+			// create network
+			const conn = new Client();
+			conn.on('ready', function() {
+				// console.log('Client :: ready');
+				conn.exec(command, function(err, stream) {
+					if (err) throw err;
+					stream.on('close', function(code, signal) {
+						console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
+						conn.end();
+						// insert db when success
+					}).on('data', function(data) {
+						console.log('STDOUT: ' + data);
+						// if(code == 0){
+							mongo.insertNetwork(value);
+							resolve(0);
+						// }
+					}).stderr.on('data', function(data) {
+						reject('STDERR: ' + data);
+						console.log('STDERR: ' + data);
+					});
+
+				});
+			}).connect(ssh_config);
+
+		});
+	},
 	setMgmt(ip,gateway,callback) {
 		return new Promise(function (resolve,reject){
 			const sleepTime = 7;

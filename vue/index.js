@@ -26,7 +26,7 @@ import {realtimeDashboard}        from "./realtime.js";
 
 axios.defaults.timeout = 1000;
 
-let ContainerTableValue = new Array();
+// let ContainerTableValue = new Array();
 
 let watcher = child_process.fork("./vue/watcher/mongo-wacher-ping.js");
 let syslogWatcher = child_process.fork("./vue/watcher/mongo-wacher-syslog.js");
@@ -106,7 +106,6 @@ function analyticsPingLog(data){
   LogArea.alivePinglog = alivecnt;
 }
 
-
 // print mongodb syslog data process
 function startSyslogWatcher() {
   stopSyslogWatcher();
@@ -156,40 +155,6 @@ function checkAppStatus(target){
   });
 }
 
-function addNetwork(existNW,networkCidr,nodeAdd) {
-  return new Promise(function (resolve,reject){
-    co(function* () {
-      if (existNW  == 0){
-        // get network number from mongo
-        const nwNumber = yield mongo.getNetworknewnumber();
-        if (nodeAdd.form.vlan){
-          // is specific vlan
-          messageArea.$message({message:"add network with vlan " + nodeAdd.form.vlan,type:"info"});
-
-          /////////////
-          ///// ここをvlanのコンフィグにするーー
-          /////////////
-          resolve(0);
-        } else{
-          // is not specific vlan
-          messageArea.$message({message:"add network with native vlan",type:"info"});
-          console.log("add network with native vlan");
-
-          /////////////
-          //// check duplicate eth
-          /////////////
-
-          resolve(yield procyon_node.addNetwork_novlan(nwNumber,networkCidr,nodeAdd.form.IPrange,nodeAdd.form.gateway,nodeAdd.form.exclude));
-        }
-      }else{
-        resolve(0);
-      }
-    });
-  }).catch(function(err){
-    process.on('unhandledRejection', console.log(err));
-  });
-}
-
 const nodeAdd = new Vue ({
   el: "#nodeAdd",
   data() {
@@ -207,16 +172,54 @@ const nodeAdd = new Vue ({
         cidr_req: [
           { type:'number', required: true, message: 'It is not CIDR format', trigger: 'change' },
         ],
+        cidr: [
+          { type:'number', required: false, message: 'It is not CIDR format', trigger: 'change' },
+        ],
         ip_req: [
           { required: true, message: 'It is not IP format', trigger: 'change' },
         ],
         ip: [
           { type:'number', required: false, message: 'It is not IP format', trigger: 'change' },
         ],
-      }
+      },
+      AppContainerTable: new Array(),
+      AppMgmtContainerTable: new Array(),
     }
   },
   methods : {
+    addNetwork(existNW,networkCidr,nodeAdd) {
+      return new Promise(function (resolve,reject){
+        co(function* () {
+          if (existNW  == 0){
+            // get network number from mongo
+            const nwNumber = yield mongo.getNetworknewnumber();
+            console.log("form vlan : ",nodeAdd.form.vlan);
+            if (nodeAdd.form.vlan){
+              // is specific vlan
+              messageArea.$message({message:"add network with vlan " + nodeAdd.form.vlan,type:"info"});
+              // console.log("add network with vlan");
+
+              resolve(yield procyon_node.addNetwork_withvlan(nwNumber,networkCidr,nodeAdd.form.vlan,nodeAdd.form.IPrange,nodeAdd.form.gateway,nodeAdd.form.exclude));
+
+            } else{
+              // is not specific vlan
+              messageArea.$message({message:"add network with native vlan",type:"info"});
+              // console.log("add network with native vlan");
+
+              /////////////
+              //// check duplicate eth
+              /////////////
+
+              resolve(yield procyon_node.addNetwork_novlan(nwNumber,networkCidr,nodeAdd.form.IPrange,nodeAdd.form.gateway,nodeAdd.form.exclude));
+            }
+          }else{
+            resolve(0);
+          }
+        });
+      }).catch(function(err){
+        process.on('unhandledRejection', console.log(err));
+      });
+    },
     addApp(type) {
       co(function* () {
         nodeAdd.addappDisabled = true;
@@ -234,7 +237,7 @@ const nodeAdd = new Vue ({
         dockerNumber = yield mongo.getDockernumber();
 
         // add the network if the network not found
-        const result = yield addNetwork(existNW,networkCidr,nodeAdd);
+        const result = yield nodeAdd.addNetwork(existNW,networkCidr,nodeAdd);
 
         // run app container
         nwNumber = yield mongo.getNetworkID(networkCidr);
@@ -270,72 +273,37 @@ const nodeAdd = new Vue ({
         // } catch(e){
         //   connectFLG
         // }
+        if(type == "app"){
+          nodeAdd.AppContainerTable.push({
+            management_ip:dockerValue.management_ip,
+            service_ip:dockerValue.service_ip,
+            network:dockerValue.ip,
+            vlan:dockerValue.vlan,
+            targetip:"",
+            // failure:!connectFLG,
+            pingdisabled:false,
+            conneted:true,
+            checked:false,
+          });
+        } else if (type = "syslog"){
+          nodeAdd.AppContainerTable.push({
+          // nodeAdd.AppMgmtContainerTable.push({
+            management_ip:dockerValue.management_ip,
+            service_ip:dockerValue.service_ip,
+            network:dockerValue.ip,
+            vlan:dockerValue.vlan,
+            // failure:!connectFLG,
+            pingdisabled:false,
+            conneted:true,
+            checked:false,
+          });
+        }
 
-        ContainerTableValue.push({
-          management_ip:dockerValue.management_ip,
-          service_ip:dockerValue.service_ip,
-          network:dockerValue.ip,
-          vlan:dockerValue.vlan,
-          targetip:"",
-          // failure:!connectFLG,
-          pingdisabled:false,
-          conneted:true,
-          checked:false,
-        });
-
-        containerTable.containerData = ContainerTableValue;
-        console.log(ContainerTableValue);
-        ResultArea.AppData = ContainerTableValue;
+        console.log(nodeAdd.AppContainerTable);
+        ResultArea.AppData = nodeAdd.AppContainerTable;
         nodeAdd.addappDisabled = false;
       });
     },
-    addSyslog() {
-      co(function* () {
-        nodeAdd.addappDisabled = true;
-        let dockerNumber;
-        let nwNumber;
-
-        // get network info from input
-        const networkInfo = ipaddr.cidrSubnet(nodeAdd.form.IPaddr);
-        const networkCidr = networkInfo.networkAddress + "/" + networkInfo.subnetMaskLength;
-
-        // check network exist
-        const existNW = yield mongo.existNetwork(networkCidr);
-
-        // get docker number from mongo
-        dockerNumber = yield mongo.getDockernumber();
-
-        // add the network if the network not found
-        const result = yield addNetwork(existNW,networkCidr,nodeAdd);
-
-        // run app container
-        nwNumber = yield mongo.getNetworkID(networkCidr);
-        let dockerValue = yield procyon_node.runSyslog(nwNumber,dockerNumber);
-
-        // insert docker info to mongo
-        const tmp = yield procyon_node.getDockerNetwork(nwNumber,dockerNumber);
-        dockerValue.ip = yield mongo.getNetworkAddress(dockerValue.network_name);
-        const tmpVlan = yield mongo.getNetworkVlan(dockerValue.network_name);
-        if(tmpVlan){
-          dockerValue.vlan = tmpVlan;
-        }else{
-          dockerValue.vlan = "native";
-        }
-        dockerValue.management_ip = tmp.split("\n")[0];
-        dockerValue.service_ip = tmp.split("\n")[1];
-        mongo.insertDockerNW(dockerValue);
-
-        ContainerTableValue.push({
-          management_ip:dockerValue.management_ip,
-          service_ip:dockerValue.service_ip,
-          network:dockerValue.ip,
-          vlan:dockerValue.vlan
-        });
-        containerTable.containerData = ContainerTableValue;
-        ResultArea.AppData = ContainerTableValue;
-        nodeAdd.addappDisabled = false;
-      });
-    }
   }
 })
 
@@ -343,14 +311,12 @@ const containerTable = new Vue({
   el: "#containerTable",
   data () {
     return {
-      containerData : ContainerTableValue,
       reqConf:{
         timeout:1000,
         interval:1000,
         packetsize:54,
         hop:10
       },
-      displayContainerTable:false,
     }
   },
   methods: {
@@ -361,9 +327,8 @@ const containerTable = new Vue({
         yield procyon_node.flushDockerNW();
         yield mongo.flushDockerNW();
         messageArea.$message({message:"Flush All app.",type:"warning"});
-        ContainerTableValue = new Array();
-        containerTable.containerData = ContainerTableValue;
-        ResultArea.AppData = ContainerTableValue;
+        nodeAdd.AppContainerTable = new Array();
+        ResultArea.AppData = nodeAdd.AppContainerTable;
       });
     },
     flushArptable(){
@@ -375,8 +340,8 @@ const containerTable = new Vue({
     co(function* () {
       try{
         const data = yield mongo.getDockreInfomation();
-        ContainerTableValue = data;
-        ResultArea.AppData = ContainerTableValue;
+        nodeAdd.AppContainerTable = data;
+        ResultArea.AppData = nodeAdd.AppContainerTable;
       }catch(e){
         console.log("mongo is not started");
       }
@@ -389,7 +354,7 @@ const ResultArea = new Vue ({
   el:"#ResultArea",
   data(){
     return{
-      AppData: ContainerTableValue,
+      AppData: nodeAdd.AppContainerTable,
       labelPosition: 'top',
       currentDate: new Date(),
       PingSwitchValue:false,
@@ -472,12 +437,12 @@ const ResultArea = new Vue ({
         yield procyon_node.deleteContainer(dockerName);
         yield mongo.deleteDockerNW(dockerName);
         messageArea.$message({message:"Success delete app",type:"success"});
-        for(i=0; i<ContainerTableValue.length; i++){
-            if(ContainerTableValue[i].management_ip == data.management_ip){
-                ContainerTableValue.splice(i, 1);
+        for(i=0; i<nodeAdd.AppContainerTable.length; i++){
+            if(nodeAdd.AppContainerTable[i].management_ip == data.management_ip){
+                nodeAdd.AppContainerTable.splice(i, 1);
             }
         }
-        ResultArea.AppData = ContainerTableValue;
+        ResultArea.AppData = nodeAdd.AppContainerTable;
       });
     }
   }
