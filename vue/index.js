@@ -21,7 +21,7 @@ import lib_node         from "./lib/lib-node";
 import lib_app          from "./lib/lib-app";
 import lib_projectTree  from "./lib/lib-projectTree";
 import lib_topNav       from "./lib/lib-topNav";
-import {realtimeDashboard}        from "./realtime.js";
+import {realtimeDashboard,pieChart,option}        from "./realtime.js";
 
 
 axios.defaults.timeout = 1000;
@@ -89,21 +89,131 @@ function analyticsPingLog(data){
   LogArea.totalPinglog = data.length;
   let deadcnt = 0;
   let alivecnt = 0;
-  for(i of data){
+  for(let i of data){
     if(i.alive == "true"){
       alivecnt++;
     }else{
       deadcnt++;
     }
   }
-  ///////////////////
-  /// 断時間の計測処理
-  /// for i で -1でfalseの場合、timestammpを引き算して、それをaddしてゆく。
-  /// これをsource destnationの関係で実施する。
-  //////////////////
 
   LogArea.deadPinglog = deadcnt;
   LogArea.alivePinglog = alivecnt;
+
+  /////
+  // transfrom data for ECharts
+
+  // sort asc
+  let dataAsc = new Array();
+  for(let i in data){
+    let arg = (data.length-1) - i;
+    dataAsc.push(data[arg]);
+  }
+
+  let arrObj = {};
+  let dedupedData = [];
+  let realtimeData = new Array();
+
+  const dead_style    = {normal: {color: "#bd6d6c"}};
+  const alive_style   = {normal: {color: "#72b362"}};
+
+  // dedupe object from soruce
+  for (let i = 0; i < dataAsc.length; i++) {
+    arrObj[dataAsc[i]['source']] = dataAsc[i];
+  }
+  // get filter data from deduped data
+  for (let key in arrObj) {
+    dedupedData.push(arrObj[key]['source']);
+  }
+
+  dedupedData.sort(function(a,b){
+    if( ipaddr.toLong(a) < ipaddr.toLong(b) ) return -1;
+    if( ipaddr.toLong(a) > ipaddr.toLong(b) ) return 1;
+    return 0;
+  });
+
+  // transform data
+  for (let i = 0; i < dedupedData.length; i++) {
+    const matchData = dataAsc.filter(function(item, index){
+      if (item.source == dedupedData[i]) return true;
+    });
+
+    console.log("matchData",matchData);
+
+    let livingData = new Array();
+    let startTime, endTime, status;
+    for (let k in matchData){
+      // input startTime and endTime;
+      // calculate aliving time;
+      if(k <= 0){
+        startTime = Number(moment(matchData[k].timestamp).format('x'));
+        status = matchData[k].status;
+      } else if (matchData[k-1].alive !== matchData[k].alive){ // when change status
+        console.log("(matchData[k-1].alive !== matchData[k].alive",matchData[k-1].alive,matchData[k].alive);
+        console.log("called");
+        endTime = Number(moment(matchData[k].timestamp).format('x'));
+        const interval = (Number(endTime) - Number(startTime));
+        const style = matchData[k-1].alive == "true" ? alive_style : dead_style;
+        livingData.push({name: matchData[k-1].alive , value: [i, startTime, endTime,interval], itemStyle: style }, (x) => {
+          startTime = Number(moment(matchData[k].timestamp).format('x'));
+        });
+        // console.log("matchData[k]",matchData[k]);
+        console.log("livingData",livingData);
+      } else if (k == matchData.length - 1){ // last of data
+        endTime = Number(moment(matchData[k].timestamp).format('x'));
+        const interval = (Number(endTime) - Number(startTime));
+        const style = matchData[k-1].alive == "true" ? alive_style : dead_style;
+        livingData.push({name: matchData[k-1].alive , value: [i, startTime, endTime,interval], itemStyle: style });
+        // console.log("livingData",livingData);
+      }
+
+    }
+    // console.log("livingData",livingData);
+    for (let l of livingData){
+      realtimeData.push(l);
+    }
+  }
+
+  console.log("realtimeData",realtimeData);
+  // get filter data from deduped data
+  let minArray = new Array();
+  for (let key in realtimeData) {
+    // console.log("realtimeData[key]",realtimeData[key]['value'][1]);
+    minArray.push(realtimeData[key]['value'][1]);
+  }
+  let mindata = 0;
+  for(let cont of minArray){
+    if(mindata < cont){
+      mindata = cont;
+    }
+  }
+
+  let maxArray = new Array();
+  for (let key in realtimeData) {
+    maxArray.push(realtimeData[key]['value'][2]);
+  }
+  let maxdata = 9999999999999;
+  for(let cont of maxArray){
+    if(maxdata > cont){
+      maxdata = cont;
+    }
+  }
+
+  /////////////
+  ///// リローーーど処理。
+  // set height
+  // realtimeDashboard.adHeight = 400;
+  // option.grid.height = realtimeDashboard.adHeight;
+  // option.dataZoom[0].top = realtimeDashboard.adHeight + 80;
+  // set  data
+  realtimeDashboard.adData = realtimeData;
+  option.series[0].data = realtimeDashboard.adData;
+  option.xAxis.min = Number(mindata);
+  option.xAxis.max = Number(maxdata);
+  option.yAxis.data = dedupedData;
+
+  pieChart.setOption(option);
+
 }
 
 // print mongodb syslog data process
@@ -159,10 +269,11 @@ const nodeAdd = new Vue ({
   el: "#nodeAdd",
   data() {
     return {
+      numberApp:1,
       form:{
         vlan:"",
-        IPaddr:"172.20.10.0/27",
-        IPrange:"172.20.10.8/29",
+        IPaddr:"172.20.10.0/24",
+        IPrange:"172.20.10.0/24",
         gateway:"172.20.10.1",
         exclude:"",
       },
@@ -223,85 +334,78 @@ const nodeAdd = new Vue ({
     addApp(type) {
       co(function* () {
         nodeAdd.addappDisabled = true;
-        let dockerNumber;
-        let nwNumber;
+        messageArea.$message({message:"please wait.",type:"info"});
+        for(let i = 1; i <= nodeAdd.numberApp; i++){
+          let dockerNumber;
+          let nwNumber;
 
-        // get network info from input
-        const networkInfo = ipaddr.cidrSubnet(nodeAdd.form.IPaddr);
-        const networkCidr = networkInfo.networkAddress + "/" + networkInfo.subnetMaskLength;
+          // get network info from input
+          const networkInfo = ipaddr.cidrSubnet(nodeAdd.form.IPaddr);
+          const networkCidr = networkInfo.networkAddress + "/" + networkInfo.subnetMaskLength;
 
-        // check network exist
-        const existNW = yield mongo.existNetwork(networkCidr);
+          // check network exist
+          const existNW = yield mongo.existNetwork(networkCidr);
 
-        // get docker number from mongo
-        dockerNumber = yield mongo.getDockernumber();
+          // get docker number from mongo
+          dockerNumber = yield mongo.getDockernumber();
 
-        // add the network if the network not found
-        const result = yield nodeAdd.addNetwork(existNW,networkCidr,nodeAdd);
+          // add the network if the network not found
+          const result = yield nodeAdd.addNetwork(existNW,networkCidr,nodeAdd);
 
-        // run app container
-        nwNumber = yield mongo.getNetworkID(networkCidr);
-        let dockerValue
-        try{
-          dockerValue = yield procyon_node.runDocker(nwNumber,dockerNumber,type);
-        } catch(e){
-          console.log("err : " + e);
-          console.log("faild command 'docker run'.");
-          nodeAdd.addappDisabled = false;
+          // run app container
+          nwNumber = yield mongo.getNetworkID(networkCidr);
+          let dockerValue
+          try{
+            dockerValue = yield procyon_node.runDocker(nwNumber,dockerNumber,type);
+          } catch(e){
+            console.log("err : " + e);
+            console.log("faild command 'docker run'.");
+            messageArea.$message({message:e,type:"error"});
+            return nodeAdd.addappDisabled = false;
+          }
+
+          // insert docker info to mongo
+          const tmp = yield procyon_node.getDockerNetwork(nwNumber,dockerNumber,type);
+          dockerValue.ip = yield mongo.getNetworkAddress(dockerValue.network_name);
+          const tmpVlan = yield mongo.getNetworkVlan(dockerValue.network_name);
+          if(tmpVlan){
+            dockerValue.vlan = tmpVlan;
+          }else{
+            dockerValue.vlan = "native";
+          }
+          dockerValue.management_ip = tmp.split("\n")[0];
+          dockerValue.service_ip = tmp.split("\n")[1];
+          yield mongo.insertDockerNW(dockerValue);
+
+          if(type == "app"){
+            nodeAdd.AppContainerTable.push({
+              management_ip:dockerValue.management_ip,
+              service_ip:dockerValue.service_ip,
+              network:dockerValue.ip,
+              vlan:dockerValue.vlan,
+              targetip:"",
+              // failure:!connectFLG,
+              pingdisabled:false,
+              conneted:true,
+              checked:false,
+            });
+          } else if (type = "syslog"){
+            nodeAdd.AppContainerTable.push({
+            // nodeAdd.AppMgmtContainerTable.push({
+              management_ip:dockerValue.management_ip,
+              service_ip:dockerValue.service_ip,
+              network:dockerValue.ip,
+              vlan:dockerValue.vlan,
+              // failure:!connectFLG,
+              pingdisabled:false,
+              conneted:true,
+              checked:false,
+            });
+          }
+          ResultArea.AppData = nodeAdd.AppContainerTable;
         }
-
-        // insert docker info to mongo
-        const tmp = yield procyon_node.getDockerNetwork(nwNumber,dockerNumber,type);
-        dockerValue.ip = yield mongo.getNetworkAddress(dockerValue.network_name);
-        const tmpVlan = yield mongo.getNetworkVlan(dockerValue.network_name);
-        if(tmpVlan){
-          dockerValue.vlan = tmpVlan;
-        }else{
-          dockerValue.vlan = "native";
-        }
-        dockerValue.management_ip = tmp.split("\n")[0];
-        dockerValue.service_ip = tmp.split("\n")[1];
-        mongo.insertDockerNW(dockerValue);
-
-        // let connectFLG = false;
-        // // check conectibity
-        // try{
-        //   setTimeout(checkAppStatus,5000,dockerValue.management_ip);
-        //   connectFLG = true;
-        //   console.log(connectFLG , !connectFLG);
-        //   // console.log(tet);
-        // } catch(e){
-        //   connectFLG
-        // }
-        if(type == "app"){
-          nodeAdd.AppContainerTable.push({
-            management_ip:dockerValue.management_ip,
-            service_ip:dockerValue.service_ip,
-            network:dockerValue.ip,
-            vlan:dockerValue.vlan,
-            targetip:"",
-            // failure:!connectFLG,
-            pingdisabled:false,
-            conneted:true,
-            checked:false,
-          });
-        } else if (type = "syslog"){
-          nodeAdd.AppContainerTable.push({
-          // nodeAdd.AppMgmtContainerTable.push({
-            management_ip:dockerValue.management_ip,
-            service_ip:dockerValue.service_ip,
-            network:dockerValue.ip,
-            vlan:dockerValue.vlan,
-            // failure:!connectFLG,
-            pingdisabled:false,
-            conneted:true,
-            checked:false,
-          });
-        }
-
-        console.log(nodeAdd.AppContainerTable);
-        ResultArea.AppData = nodeAdd.AppContainerTable;
         nodeAdd.addappDisabled = false;
+        messageArea.$message({message:"done.",type:"success"});
       });
     },
   }
@@ -317,6 +421,7 @@ const containerTable = new Vue({
         packetsize:54,
         hop:10
       },
+      displayContainerTable:false,
     }
   },
   methods: {
@@ -336,6 +441,7 @@ const containerTable = new Vue({
       procyon_node.flushArptable();
     }
   },
+  // Auto reload Apps
   created: function() {
     co(function* () {
       try{
@@ -364,7 +470,8 @@ const ResultArea = new Vue ({
   methods: {
     startPing(data,index){
       console.log("ping disabled : ",data.pingdisabled);
-      if (data.targetip == undefined){
+      console.log("data.targetip :",data.targetip );
+      if (data.targetip == undefined || data.targetip == ""){
         messageArea.$message({message:"Target ip is null",type:"error"});
         data.pingdisabled = false;
         return 127;
@@ -529,7 +636,6 @@ const LogArea = new Vue({
     changeSwitch() {
       co(function* () {
         if(LogArea.MongoSwitchPing){
-          // LogArea.$el.getElementsByClassName("el-table")[0].hidden = false;
           try{
             yield mongo.getStatus();
             startWatcher();
@@ -540,7 +646,6 @@ const LogArea = new Vue({
           }
         }
         else{
-          // LogArea.$el.getElementsByClassName("el-table")[0].hidden = true;
           stopWatcher();
         }
       })
@@ -559,9 +664,6 @@ const LogArea = new Vue({
         LogArea.masterData = data;
         analyticsPingLog(data);
       })
-    },
-    ChangeLogs(tab, event){
-      // console.log(tab, event);
     },
     changeSwitchSyslog() {
       co(function* () {

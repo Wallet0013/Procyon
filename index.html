@@ -106,6 +106,7 @@
                 <el-input placeholder="Exclude : 192.168.1.1" v-model="form.exclude"></el-input>
               </el-form-item>
               <el-form-item>
+                <el-input-number v-model="numberApp" controls-position="right" :min="1"></el-input-number>
                 <el-button type="primary" @click="addApp('app')" v-bind:disabled="addappDisabled">Add App</el-button>
                 <el-button type="primary" @click="addApp('syslog')" v-bind:disabled="addappDisabled">Add Syslog</el-button>
               </el-form-item>
@@ -176,7 +177,7 @@
             </el-alert>
             <h2 class="title-grey">RealTime Dashboard</h2>
             <el-button @click="reloadChart()" type="primary" class="button">Reload</el-button>
-            <div id="realtime"></div>
+            <div id="realtime" v-bind:style="{ height: adHeight + 100 +'px' }"></div>
           </div>
 
           <div id="LogArea" v-show="displayLogArea">
@@ -214,7 +215,7 @@
               <el-button @click="registRecord()" type="primary" >Regist</el-button>
               <el-button @click="resetRecord()" type="danger" >UnRegist</el-button>
             </div>
-              <el-tabs v-model="LogActive" @tab-click="ChangeLogs" type="card">
+              <el-tabs v-model="LogActive"  type="card">
                 <el-tab-pane label="Ping" name="Ping">
                   <div>
                     <h3 class="title-grey">PingLog Viewer</h3>

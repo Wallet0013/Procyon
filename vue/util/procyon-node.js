@@ -144,6 +144,7 @@ export default {
 						console.log("return data is :" + data);
 						// messageArea.$message({message:"Created app : " + data,type:"info"});
 					}).stderr.on('data', function(data) {
+						reject('STDERR: ' + data);
 						console.log('STDERR: ' + data);
 					});
 

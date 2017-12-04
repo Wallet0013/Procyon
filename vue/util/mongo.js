@@ -47,7 +47,7 @@ module.exports = {
 						},
 						{$unwind:"$address_resolve"},
 						{$limit: limit}
-					],function(err, result) {
+					],{ allowDiskUse: true },function(err, result) {
 						if (err){
 							db.close();
 							reject(err);
@@ -111,7 +111,7 @@ module.exports = {
 			        		}
 				        },
 						{$limit: limit}
-					],function(err, result) {
+					],{ allowDiskUse: true },function(err, result) {
 						if (err){
 							db.close();
 							reject(err);
@@ -353,7 +353,6 @@ module.exports = {
 			co(function* () {
 				const db = yield MongoClient.connect(url);
 				db.collection("container").insertOne(value);
-				const sourceIF = os.networkInterfaces();
 
 				console.log(value);
 
