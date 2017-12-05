@@ -134,7 +134,7 @@
           </div>
           <el-row id="ResultArea" v-show="displayResultArea">
             <h3 class="title-grey">App Client List</h3>
-            <el-col :span="4" v-for="(item, index) in AppData" :key="index" :offset="1">
+            <el-col :span="4" v-for="(item, index) in AppData" :key="index">
               <el-card v-bind:class="{'is-pinging':item.pingdisabled,'is-ready':!item.pingdisabled}" :body-style="{ padding: '10px' }">
                 <el-checkbox v-model="item.checked" label="Select" border></el-checkbox>
                 <el-tag type="success" v-if="item.connected" >Connected</el-tag>

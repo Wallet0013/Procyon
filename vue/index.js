@@ -6,6 +6,7 @@ import promiseRetry   from "promise-retry";
 import child_process  from "child_process";
 import BigNumber      from "bignumber.js";
 import Papa           from "papaparse";
+import _              from "lodash";
 
 // element ui
 import Vue            from 'vue';
@@ -86,6 +87,14 @@ function pingLogConvertor(result){
 }
 
 function analyticsPingLog(data){
+  const dead_style    = {normal: {color: "#bd6d6c"}};
+  const alive_style   = {normal: {color: "#72b362"}};
+
+
+  let realtimeData = new Array();
+
+
+
   LogArea.totalPinglog = data.length;
   let deadcnt = 0;
   let alivecnt = 0;
@@ -103,42 +112,40 @@ function analyticsPingLog(data){
   /////
   // transfrom data for ECharts
 
-  // sort asc
+
+  // up side down raw data
   let dataAsc = new Array();
   for(let i in data){
     let arg = (data.length-1) - i;
     dataAsc.push(data[arg]);
   }
 
-  let arrObj = {};
-  let dedupedData = [];
-  let realtimeData = new Array();
-
-  const dead_style    = {normal: {color: "#bd6d6c"}};
-  const alive_style   = {normal: {color: "#72b362"}};
-
-  // dedupe object from soruce
-  for (let i = 0; i < dataAsc.length; i++) {
-    arrObj[dataAsc[i]['source']] = dataAsc[i];
-  }
-  // get filter data from deduped data
-  for (let key in arrObj) {
-    dedupedData.push(arrObj[key]['source']);
-  }
-
-  dedupedData.sort(function(a,b){
-    if( ipaddr.toLong(a) < ipaddr.toLong(b) ) return -1;
-    if( ipaddr.toLong(a) > ipaddr.toLong(b) ) return 1;
-    return 0;
+  // dedupe by source & dest
+  const arrObj = _.uniqBy(dataAsc, (x) => {
+    return x.source + ' ' + x.dest;
   });
 
-  // transform data
-  for (let i = 0; i < dedupedData.length; i++) {
+  // sort by source & dest
+  const arrObjSorted = _.sortBy(arrObj,["source","dest"]);
+
+  // set Categories by source-dest
+  let arrayData = [];
+  for(let kk of arrObjSorted){
+    arrayData.push(kk.source + "-" + kk.dest);
+  }
+  // console.log("arrayData",arrayData);
+
+  ////////
+  // transform deduped data to graph datasets
+  ///
+
+  // loop per deduped data
+  for (let i = 0; i < arrObjSorted.length; i++) {
     const matchData = dataAsc.filter(function(item, index){
-      if (item.source == dedupedData[i]) return true;
+      if (item.source == arrObjSorted[i].source && item.dest == arrObjSorted[i].dest) return true;
     });
 
-    console.log("matchData",matchData);
+    // console.log("matchData",matchData);
 
     let livingData = new Array();
     let startTime, endTime, status;
@@ -199,18 +206,22 @@ function analyticsPingLog(data){
     }
   }
 
-  /////////////
+  //////////////////////////
   ///// リローーーど処理。
+  //////////////////////////
   // set height
   // realtimeDashboard.adHeight = 400;
   // option.grid.height = realtimeDashboard.adHeight;
   // option.dataZoom[0].top = realtimeDashboard.adHeight + 80;
-  // set  data
+  // set data
+  //////////////////////////
+
   realtimeDashboard.adData = realtimeData;
   option.series[0].data = realtimeDashboard.adData;
   option.xAxis.min = Number(mindata);
   option.xAxis.max = Number(maxdata);
-  option.yAxis.data = dedupedData;
+  realtimeDashboard.adCategories = arrayData;
+  option.yAxis.data = realtimeDashboard.adCategories;
 
   pieChart.setOption(option);
 

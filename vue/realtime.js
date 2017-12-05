@@ -17,7 +17,8 @@ const realtimeDashboard = new Vue ({
     return {
       displayRealtimeDashboard:false,
       adData:"",
-      adHeight:500,
+      adHeight:300,
+      adCategories:"",
     }
   },
   methods: {
@@ -37,7 +38,6 @@ const realtimeDashboard = new Vue ({
 const pieChart = chart.init(document.getElementById('realtime')); // 表示する場所のID
 
 
-const categories = ['192.168.1.1->10.10.10.10', 'src2-dest1', 'src2-dest2','hoge','hge'];
 
 const dead_style    = {normal: {color: "#bd6d6c"}};
 const alive_style   = {normal: {color: "#72b362"}};
@@ -134,7 +134,8 @@ let option = {
         filterMode: 'weakFilter'
     }],
     grid: {
-        height:realtimeDashboard.adHeight
+        height:realtimeDashboard.adHeight,
+        left:150
     },
     xAxis: {
         min: startTime,
@@ -157,7 +158,8 @@ let option = {
         }
     },
     yAxis: {
-        data: categories
+        data: realtimeDashboard.adCategories,
+        // offset:100
     },
     series: [{
         type: 'custom',
