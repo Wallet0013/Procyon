@@ -100,7 +100,7 @@ Github issueにあげてください。
 ---
 ## インストール
 powershellで良い感じに入るようにしてます。
-何をしてるかはソースを読んでください :bomb: 
+何をしてるかはソースを読んでください :bomb:
 
 最初にchocolateyをいれて、あとはcholoで良い感じに入ってきます。
 
@@ -110,7 +110,7 @@ powershellで良い感じに入るようにしてます。
 
 
 ## 構成
-![procyon-arhitecture](procyon-architecture.png)
+![procyon-arhitecture](https://github.com/Wallet0013/Procyon/raw/master/procyon-architecture.png)
 
 
 ## 使い方
