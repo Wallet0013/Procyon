@@ -12,8 +12,9 @@ import mongo          from "../util/mongo";
 import procyon_node   from "../util/procyon-node";
 import {messageArea}  from "../util/message";
 import {nodeTool}       from "../lib/lib-node";
+import {timeRange}        from "../lib/lib-timeRange";
 import {nodeAdd,containerTable,ResultArea,LogArea}       from "../index";
-import {realtimeDashboard}        from "../realtime.js";
+import {realtimeDashboard}        from "../lib/lib-realtime.js";
 
 // element ui
 import Vue      from 'vue'
@@ -22,7 +23,7 @@ import locale       from 'element-ui/lib/locale/lang/ja'
 import 'element-ui/lib/theme-chalk/index.css'
 Vue.use(ElementUI, {locale});
 
-const topNav = new Vue({
+export const topNav = new Vue({
   el : "#topNav",
   data() {
     return {
@@ -39,6 +40,7 @@ const topNav = new Vue({
           containerTable.displayContainerTable = false;
           ResultArea.displayResultArea = false;
           realtimeDashboard.displayRealtimeDashboard = false;
+          timeRange.displaytimeRange = false;
           LogArea.displayLogArea = false;
           break;
         case "2":
@@ -48,6 +50,7 @@ const topNav = new Vue({
           containerTable.displayContainerTable = true;
           ResultArea.displayResultArea = true;
           realtimeDashboard.displayRealtimeDashboard = false;
+          timeRange.displaytimeRange = false;
           LogArea.displayLogArea = false;
           break;
         case "3":
@@ -56,16 +59,19 @@ const topNav = new Vue({
           nodeAdd.displayNodeApp = false;
           containerTable.displayContainerTable = false;
           ResultArea.displayResultArea = false;
+          timeRange.displaytimeRange = false;
           realtimeDashboard.displayRealtimeDashboard = true;
           LogArea.displayLogArea = false;
           break;
         case "4":
-          // console.log(key,keyPath);
+          // false
           nodeTool.displayNodeTool = false;
           nodeAdd.displayNodeApp = false;
           containerTable.displayContainerTable = false;
           ResultArea.displayResultArea = false;
           realtimeDashboard.displayRealtimeDashboard = false;
+          /// true
+          timeRange.displaytimeRange = true;
           LogArea.displayLogArea = true;
           break;
         default:

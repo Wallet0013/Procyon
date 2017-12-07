@@ -14,7 +14,8 @@
     <div style="height: 100%;">
       <div class="sidebar">
         <div id="projectTree" class="sidebar-contents">
-          <h2 class="title">Project Tree</h2>
+          <h2 class="brand">Procyon</h2>
+          <h3 class="title">Project Tree</h3>
           <el-input
             size="small"
             placeholder="Input Test number"
@@ -180,6 +181,9 @@
             <div id="realtime" v-bind:style="{ height: adHeight + 100 +'px' }"></div>
           </div>
 
+          <div id="timeRange" v-show="displaytimeRange">
+            <h2 class="title-grey">TimeRange</h2>
+          </div>
           <div id="LogArea" v-show="displayLogArea">
             <el-alert
               title="What is the Analytics ?"

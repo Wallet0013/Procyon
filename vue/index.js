@@ -7,6 +7,7 @@ import child_process  from "child_process";
 import BigNumber      from "bignumber.js";
 import Papa           from "papaparse";
 import _              from "lodash";
+import Dygraph        from "dygraphs";
 
 // element ui
 import Vue            from 'vue';
@@ -22,7 +23,8 @@ import lib_node         from "./lib/lib-node";
 import lib_app          from "./lib/lib-app";
 import lib_projectTree  from "./lib/lib-projectTree";
 import lib_topNav       from "./lib/lib-topNav";
-import {realtimeDashboard,pieChart,option}        from "./realtime.js";
+import {timeRange}        from "./lib/lib-timeRange";
+import {realtimeDashboard,pieChart,option}        from "./lib/lib-realtime.js";
 
 
 axios.defaults.timeout = 1000;
@@ -534,10 +536,20 @@ const ResultArea = new Vue ({
       }
       const status = true;
       this.isActive = false;
+      let transTimeout = 1;
+
+      if(containerTable.reqConf.timeout <= 1999 ){
+        transTimeout = 1;
+        console.log("div data : ",transTimeout);
+      } else if (containerTable.reqConf.timeout >= 2000 ){
+        transTimeout = new BigNumber(containerTable.reqConf.timeout).div(1000).round(0,1).toNumber();
+        console.log("div data : ",transTimeout);
+      }
+
       axios.post("http://" + data.management_ip + ":50001/start_traceroute", {
         destnation:data.targetip,
         hop:containerTable.reqConf.hop,
-        timeout:containerTable.reqConf.timeout
+        timeout:transTimeout
       })
       .then(res => {
         this.sending = false
@@ -565,7 +577,6 @@ const ResultArea = new Vue ({
     }
   }
 })
-
 
 const LogArea = new Vue({
   el: "#LogArea",

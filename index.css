@@ -118,11 +118,15 @@ label{
 	color:#5a5e66
 }
 
-h2.title{
+h2.brand{
 	color: #FAFAFA;
 }
 
-h2,h3.title-grey{
+h2.title,h3.title{
+	color: #FAFAFA;
+}
+
+h2.title-grey,h3.title-grey{
 	color: #5A5E66;
 }
 

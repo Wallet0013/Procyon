@@ -11,7 +11,7 @@ Vue.use(ElementUI, {locale});
 
 import chart          from 'echarts';
 
-const realtimeDashboard = new Vue ({
+export const realtimeDashboard = new Vue ({
   el: "#realtimeDashboard",
   data() {
     return {
@@ -35,7 +35,7 @@ const realtimeDashboard = new Vue ({
   },
 });
 
-const pieChart = chart.init(document.getElementById('realtime')); // 表示する場所のID
+export const pieChart = chart.init(document.getElementById('realtime')); // 表示する場所のID
 
 
 
@@ -78,7 +78,18 @@ function renderItem(params, api) {
 }
 
 
-let option = {
+export let option = {
+    toolbox: {
+        show : true,
+        feature : {
+            // mark : {show: true},
+            dataZoom : {show: true,title:{zoom:"zoom"}},
+            // dataView : {show: true},
+            // magicType : {show: true, type: ['line', 'bar']},
+            // restore : {show: true},
+            saveAsImage : {show: true,title:"Save as Image"}
+        }
+    },
     tooltip: {
         formatter: function (params) {
             let format;
@@ -176,12 +187,3 @@ let option = {
         data: realtimeDashboard.adData
     }]
 };
-
-
-
-// オプションをインスタンスに適用
-// pieChart.setOption(option);
-
-
-
-export {realtimeDashboard,pieChart,option};
