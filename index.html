@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <title>Procyon</title>
     <script src="./node_modules/echarts/dist/echarts.js"></script>
+    <link rel="stylesheet" href="./simplegrid.css">
     <link rel="stylesheet" href="./index.css">
-    <link href='https://fonts.googleapis.com/css?family=Muli' rel='stylesheet' type='text/css'>
   </head>
   <body>
     <div class="header">
       <div id="messageArea"></div>
     </div>
-    <div style="height: 100%;">
+    <div class="body">
       <div class="sidebar">
         <div id="projectTree" class="sidebar-contents">
           <h2 class="brand">Procyon</h2>
@@ -177,20 +177,54 @@
               show-icon>
             </el-alert>
             <h2 class="title-grey">RealTime Dashboard</h2>
-            <el-button @click="reloadChart()" type="primary" class="button">Reload</el-button>
+            <label>RealTime Switcher</label>
+            <el-switch v-model="RealtimeSwitch" @change="changeSwitch()"></el-switch>
+            <br>
+            <div class="grid grid-pad">
+              <div class="col-1-1">
+              </div>
+              <div class="col-1-2">
+                <label>Reload Interval</label>
+                <el-slider v-model="ReloadInt" :min="300" :max="5000" :step="100" :format-tooltip="formatInt" @change="changeSwitch()"></el-slider>
+              </div>
+              <div class="col-1-2">
+                <label>Reload time</label>
+                <el-slider v-model="LoadRange" :min="1" :max="15" :format-tooltip="formatRange"></el-slider>
+              </div>
+            </div>
+            <h3 class="title-grey">Active Dead Ratio</h3>
             <div id="realtime" v-bind:style="{ height: adHeight + 100 +'px' }"></div>
           </div>
 
           <div id="timeRange" v-show="displaytimeRange">
-            <h2 class="title-grey">TimeRange</h2>
-          </div>
-          <div id="LogArea" v-show="displayLogArea">
             <el-alert
               title="What is the Analytics ?"
               type="info"
               description="The Analytics is analyze ping,traceroute,syslog logs. You set range logs at first. So you appear visualize graph. Next you set"
               show-icon>
             </el-alert>
+            <h2 class="title-grey">TimeRange</h2>
+            <el-date-picker
+              v-model="limitTimeRangeDate"
+              type="date"
+              placeholder="Pick a day"
+              @change="getAllpingCnt()"
+              >
+            </el-date-picker>
+            <el-time-picker
+              is-range
+              v-model="limitTimeRangeTime"
+              range-separator="To"
+              start-placeholder="Start time"
+              end-placeholder="End time"
+              @change="getAllpingCnt()"
+              >
+            </el-time-picker>
+            <el-button @click="getAllPing()" type="primary" class="button">Reload</el-button>
+            <h3> {{ PingCnt }}</h3>
+          </div>
+          <div id="LogArea" v-show="displayLogArea">
+
             <h2 class="title-grey">Analytics</h2>
             <div class="resolve">
               <label>Resolve Name</label>
@@ -234,7 +268,7 @@
                     <br>
                     <div class="slider">
                      <label>LogLimit</label>
-                     <el-slider class="slider-70" v-model="logLimit" :max="500" :min="1" :step="1" @change="changeSwitch()"></el-slider> <br>
+                     <el-slider class="slider-70" v-model="logLimit" :max="5000" :min="1" :step="1" @change="changeSwitch()"></el-slider> <br>
                     </div>
                     <div class="slider">
                       <label>Reload Interval msec</label>
@@ -264,24 +298,6 @@
                     <div class="filter-input">
                       <label>Messages</label>
                       <el-input placeholder="Messages" prefix-icon="el-icon-search" v-model="filterLogsMessage"></el-input>
-                    </div>
-                    <div class="filter-input">
-                      <div class="block">
-                        <label>Timestamp</label>
-                        <el-date-picker
-                          v-model="filterLogsTimedate"
-                          type="daterange"
-                          start-placeholder="Start Date"
-                          end-placeholder="End Date">
-                        </el-date-picker>
-                        <el-time-picker
-                          is-range
-                          v-model="filterLogsTimetime"
-                          range-separator="To"
-                          start-placeholder="Start time"
-                          end-placeholder="End time">
-                        </el-time-picker>
-                      </div>
                     </div>
                   </section>
                   <br>

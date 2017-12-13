@@ -8,6 +8,7 @@ import BigNumber      from "bignumber.js";
 import Papa           from "papaparse";
 import _              from "lodash";
 import Dygraph        from "dygraphs";
+import {promisify}    from 'util';
 
 // element ui
 import Vue            from 'vue';
@@ -23,211 +24,13 @@ import lib_node         from "./lib/lib-node";
 import lib_app          from "./lib/lib-app";
 import lib_projectTree  from "./lib/lib-projectTree";
 import lib_topNav       from "./lib/lib-topNav";
-import {timeRange}        from "./lib/lib-timeRange";
+import {timeRange}      from "./lib/lib-timeRange";
 import {realtimeDashboard,pieChart,option}        from "./lib/lib-realtime.js";
 
 
 axios.defaults.timeout = 1000;
 
-// let ContainerTableValue = new Array();
 
-let watcher = child_process.fork("./vue/watcher/mongo-wacher-ping.js");
-let syslogWatcher = child_process.fork("./vue/watcher/mongo-wacher-syslog.js");
-
-// print mongodb ping data process
-function startWatcher() {
-  stopWatcher();
-  watcher.send({
-    interval : LogArea.interval,
-    source:LogArea.filterLogsSource,
-    destnation:LogArea.filterLogsDestnation,
-    alive:LogArea.filterLogsAlive,
-    start : "tes",
-    end : "tes",
-    limit : LogArea.logLimit
-  });
-
-  watcher.on("message", function (result) {
-    co(function* () {
-      const transResult = yield pingLogConvertor(result);
-      LogArea.tableData = transResult;
-      LogArea.masterData = transResult;
-      analyticsPingLog(transResult);
-    }).catch(function(err){
-      process.on('unhandledRejection', console.log(err));
-    });
-  });
-}
-
-function stopWatcher() {
-  co(function* () {
-    watcher.kill('SIGKILL');
-    watcher = child_process.fork("./vue/watcher/mongo-wacher-ping.js");
-  })
-}
-
-function pingLogConvertor(result){
-  return new Promise(function (resolve,reject){
-    let transResult = new Array();
-    let i;
-    for(i = 0;i < result.length; i++){
-      let transTime;
-      transTime = (result[i].microsec / 1000).toString();
-      transResult.push({
-        source:result[i].source,
-        source_resolve:(result[i].source_resolve !== undefined) ? result[i].source_resolve.name : "",
-        dest:result[i].destnation,
-        dest_resolve:(result[i].destnation_resolve !== undefined) ? result[i].destnation_resolve.name : "",
-        alive:result[i].alive + "",
-        time:transTime,
-        timestamp:moment(result[i].timestamp[0],"X").format('YYYY-MM-DD HH:mm:ss') + "." + ( "000000" + result[i].timestamp[1].toString()).slice(-6).slice(0,3),
-        message:result[i].error + ""
-      })
-    }
-    resolve(transResult);
-  });
-}
-
-function analyticsPingLog(data){
-  const dead_style    = {normal: {color: "#bd6d6c"}};
-  const alive_style   = {normal: {color: "#72b362"}};
-
-
-  let realtimeData = new Array();
-
-
-
-  LogArea.totalPinglog = data.length;
-  let deadcnt = 0;
-  let alivecnt = 0;
-  for(let i of data){
-    if(i.alive == "true"){
-      alivecnt++;
-    }else{
-      deadcnt++;
-    }
-  }
-
-  LogArea.deadPinglog = deadcnt;
-  LogArea.alivePinglog = alivecnt;
-
-  /////
-  // transfrom data for ECharts
-
-
-  // up side down raw data
-  let dataAsc = new Array();
-  for(let i in data){
-    let arg = (data.length-1) - i;
-    dataAsc.push(data[arg]);
-  }
-
-  // dedupe by source & dest
-  const arrObj = _.uniqBy(dataAsc, (x) => {
-    return x.source + ' ' + x.dest;
-  });
-
-  // sort by source & dest
-  const arrObjSorted = _.sortBy(arrObj,["source","dest"]);
-
-  // set Categories by source-dest
-  let arrayData = [];
-  for(let kk of arrObjSorted){
-    arrayData.push(kk.source + "-" + kk.dest);
-  }
-  // console.log("arrayData",arrayData);
-
-  ////////
-  // transform deduped data to graph datasets
-  ///
-
-  // loop per deduped data
-  for (let i = 0; i < arrObjSorted.length; i++) {
-    const matchData = dataAsc.filter(function(item, index){
-      if (item.source == arrObjSorted[i].source && item.dest == arrObjSorted[i].dest) return true;
-    });
-
-    // console.log("matchData",matchData);
-
-    let livingData = new Array();
-    let startTime, endTime, status;
-    for (let k in matchData){
-      // input startTime and endTime;
-      // calculate aliving time;
-      if(k <= 0){
-        startTime = Number(moment(matchData[k].timestamp).format('x'));
-        status = matchData[k].status;
-      } else if (matchData[k-1].alive !== matchData[k].alive){ // when change status
-        console.log("(matchData[k-1].alive !== matchData[k].alive",matchData[k-1].alive,matchData[k].alive);
-        console.log("called");
-        endTime = Number(moment(matchData[k].timestamp).format('x'));
-        const interval = (Number(endTime) - Number(startTime));
-        const style = matchData[k-1].alive == "true" ? alive_style : dead_style;
-        livingData.push({name: matchData[k-1].alive , value: [i, startTime, endTime,interval], itemStyle: style }, (x) => {
-          startTime = Number(moment(matchData[k].timestamp).format('x'));
-        });
-        // console.log("matchData[k]",matchData[k]);
-        console.log("livingData",livingData);
-      } else if (k == matchData.length - 1){ // last of data
-        endTime = Number(moment(matchData[k].timestamp).format('x'));
-        const interval = (Number(endTime) - Number(startTime));
-        const style = matchData[k-1].alive == "true" ? alive_style : dead_style;
-        livingData.push({name: matchData[k-1].alive , value: [i, startTime, endTime,interval], itemStyle: style });
-        // console.log("livingData",livingData);
-      }
-
-    }
-    // console.log("livingData",livingData);
-    for (let l of livingData){
-      realtimeData.push(l);
-    }
-  }
-
-  console.log("realtimeData",realtimeData);
-  // get filter data from deduped data
-  let minArray = new Array();
-  for (let key in realtimeData) {
-    // console.log("realtimeData[key]",realtimeData[key]['value'][1]);
-    minArray.push(realtimeData[key]['value'][1]);
-  }
-  let mindata = 0;
-  for(let cont of minArray){
-    if(mindata < cont){
-      mindata = cont;
-    }
-  }
-
-  let maxArray = new Array();
-  for (let key in realtimeData) {
-    maxArray.push(realtimeData[key]['value'][2]);
-  }
-  let maxdata = 9999999999999;
-  for(let cont of maxArray){
-    if(maxdata > cont){
-      maxdata = cont;
-    }
-  }
-
-  //////////////////////////
-  ///// リローーーど処理。
-  //////////////////////////
-  // set height
-  // realtimeDashboard.adHeight = 400;
-  // option.grid.height = realtimeDashboard.adHeight;
-  // option.dataZoom[0].top = realtimeDashboard.adHeight + 80;
-  // set data
-  //////////////////////////
-
-  realtimeDashboard.adData = realtimeData;
-  option.series[0].data = realtimeDashboard.adData;
-  option.xAxis.min = Number(mindata);
-  option.xAxis.max = Number(maxdata);
-  realtimeDashboard.adCategories = arrayData;
-  option.yAxis.data = realtimeDashboard.adCategories;
-
-  pieChart.setOption(option);
-
-}
 
 // print mongodb syslog data process
 function startSyslogWatcher() {
@@ -285,8 +88,8 @@ const nodeAdd = new Vue ({
       numberApp:1,
       form:{
         vlan:"",
-        IPaddr:"172.20.10.0/24",
-        IPrange:"172.20.10.0/24",
+        IPaddr:"172.20.10.0/28",
+        IPrange:"172.20.10.8/29",
         gateway:"172.20.10.1",
         exclude:"",
       },
@@ -418,6 +221,7 @@ const nodeAdd = new Vue ({
           ResultArea.AppData = nodeAdd.AppContainerTable;
         }
         nodeAdd.addappDisabled = false;
+        nodeAdd.numberApp = 1;
         messageArea.$message({message:"done.",type:"success"});
       });
     },
@@ -682,15 +486,19 @@ const LogArea = new Vue({
         }
         const result = yield mongo.getPingCollection(limit);
         const data = yield pingLogConvertor(result);
-        LogArea.tableData = data;
-        LogArea.masterData = data;
+
+        ///////////
+        // table reload
+        //////////////////////////////
+        // LogArea.tableData = data;
+        // LogArea.masterData = data;
+        /////////////////////////////
         analyticsPingLog(data);
       })
     },
     changeSwitchSyslog() {
       co(function* () {
         if(LogArea.MongoSwitchSyslog){
-          // LogArea.$el.getElementsByClassName("el-table")[0].hidden = false;
           try{
             yield mongo.getStatus();
             startSyslogWatcher();

@@ -70,6 +70,7 @@ module.exports = {
 
 		});
 	},
+
 	getPingCollection : function getPingCollection(limit,QueryParam) {
 		return new Promise(function (resolve,reject){
 			co(function* () {
@@ -120,6 +121,50 @@ module.exports = {
 						db.close();
 						resolve(result);
 						// console.log("result",result);
+					});
+					// db.close();
+					// resolve(pinglog);
+				}catch(e){
+					console.log("error : " + e);
+					reject(127);
+				}
+
+			}).catch(function(err){
+				process.on('unhandledRejection', console.log(err));
+			});
+
+		});
+	},
+	getAllPingCollectionCnt : function getAllPingCollectionCnt() {
+		return new Promise(function (resolve,reject){
+			co(function* () {
+				try{
+					db = yield MongoClient.connect(url);
+					resolve(yield db.collection("ping").find().count());
+				}catch(e){
+					console.log("error : " + e);
+					reject(127);
+				}
+
+			}).catch(function(err){
+				process.on('unhandledRejection', console.log(err));
+			});
+
+		});
+	},
+	getAllPingCollection : function getAllPingCollection() {
+		return new Promise(function (resolve,reject){
+			co(function* () {
+				try{
+					db = yield MongoClient.connect(url);
+					db.collection("ping").find().toArray(function(err, result) {
+						if (err){
+							db.close();
+							reject(err);
+							console.log(err);
+						}
+						db.close();
+						resolve(result);
 					});
 					// db.close();
 					// resolve(pinglog);

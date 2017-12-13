@@ -1,6 +1,9 @@
+@font-face {
+	font-family: 'Muli';
+	src: url(./font/Muli-Light.ttf);
+}
 * {
 	font-family: "Muli"!important;
-	font-weight:100 !important;
 }
 
 html,body{
@@ -50,6 +53,10 @@ html,body{
 
 .progress{
 	margin-top:1em;
+}
+
+.body{
+	height: 100%;
 }
 
 .sidebar {
