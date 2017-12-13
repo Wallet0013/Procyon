@@ -105,14 +105,6 @@ html,body{
 }
 
 
-.filter{
-	width:100%;
-}
-.filter-input{
-	width: 15%;
-	margin-left: 5px;
-	display: inline-block;
-}
 
 .resolve{
 	margin-bottom: 15px;

@@ -27,15 +27,13 @@ function startWatcher() {
   stopWatcher();
   watcher.send({
     interval : realtimeDashboard.ReloadInt,
-    // source:LogArea.filterLogsSource,
     source:"",
-    // destnation:LogArea.filterLogsDestnation,
     destnation:"",
-    // alive:LogArea.filterLogsAlive,
+    time:realtimeDashboard.LoadRange,
     alive:"",
     start : "tes",
     end : "tes",
-    limit : 5000,
+    limit : 50000,
   });
 
   watcher.on("message", function (result) {
@@ -257,7 +255,7 @@ export const realtimeDashboard = new Vue ({
             yield mongo.getStatus();
             startWatcher();
           } catch(e){
-            console.log("failed");
+            console.log("failed :",e);
             messageArea.$message({message:"Fail connecting mongodb.",type:"error"});
             LogArea.MongoSwitchPing = false;
           }

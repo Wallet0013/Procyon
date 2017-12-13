@@ -8,8 +8,6 @@ const mongo       = require("../util/mongo");
 
 let db;
 let limit;
-let separateTime = 1000000000;
-
 function getPingCollectionfromDB(db,limit,QueryParam,TimeStamp) {
     return new Promise(function (resolve,reject){
       co(function* () {
@@ -21,11 +19,10 @@ function getPingCollectionfromDB(db,limit,QueryParam,TimeStamp) {
           if (TimeStamp == undefined){
             TimeStamp = {};
           }
-          TimeStamp = {};
           let logs =  db.collection("ping").aggregate([
             {$match:{ $and : [QueryParam,TimeStamp]}},
             {$sort:{timestamp: -1}},
-            {$lookup:
+            {$lookup: // join
                 {
                     from:"resolve",
                     localField:"source",
@@ -39,7 +36,7 @@ function getPingCollectionfromDB(db,limit,QueryParam,TimeStamp) {
                       preserveNullAndEmptyArrays: true
                   }
                 },
-            {$lookup:
+            {$lookup: //join
                 {
                     from:"resolve",
                     localField:"destnation",
@@ -79,14 +76,12 @@ function getPingCollectionfromDB(db,limit,QueryParam,TimeStamp) {
 }
 
 
-function getPingCollection(db,limit,source,destnation,alive) {
+function parsequery(db,limit,time,source,destnation,alive) {
   co(function* (){
     try{
       let souceQuery      = null;
       let destnationQuery = null;
       let aliveQuery      = null;
-
-      let time = separateTime;
 
       if(source){
         souceQuery = JSON.stringify({source :{ $regex: ".*" + source + ".*"}});
@@ -99,15 +94,12 @@ function getPingCollection(db,limit,source,destnation,alive) {
       }
       const QueryParam = JSON.parse(souceQuery,destnationQuery,aliveQuery);
 
-      let timestampQuery = JSON.stringify({timestamp:{$gt:time}});
+      let timestampQuery = JSON.stringify({timestamp:{$gt:Number(moment().subtract(time,'minutes').format('x'))}});
       const TimeStamp = JSON.parse(timestampQuery);
 
       let pinglog = yield getPingCollectionfromDB(db,limit,QueryParam,TimeStamp);
 
-      // get last of timestamp
-      separateTime = pinglog[0].timestamp;
-      // console.log("max value ",moment(separateTime).format("MM-DD HH:mm:ss.SSS"));
-
+      // // get last of timestamp
       process.send(pinglog);
     }catch(e){
       console.log(e);
@@ -127,7 +119,7 @@ process.on("message", function (body) {
       limit = Number(body.limit);
       // getPingCollection;
       db = yield MongoClient.connect(url);
-      setInterval(getPingCollection,body.interval,db,limit,body.source,body.destnation,body.alive);
+      setInterval(parsequery,body.interval,db,limit,body.time,body.source,body.destnation,body.alive);
 
   }).catch(function(err){
     process.on('unhandledRejection', console.log(err));

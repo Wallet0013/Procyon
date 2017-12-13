@@ -178,18 +178,18 @@
             </el-alert>
             <h2 class="title-grey">RealTime Dashboard</h2>
             <label>RealTime Switcher</label>
-            <el-switch v-model="RealtimeSwitch" @change="changeSwitch()"></el-switch>
+            <el-switch v-model="RealtimeSwitch" active-text="On" inactive-text="Off" @change="changeSwitch()"></el-switch>
             <br>
             <div class="grid grid-pad">
               <div class="col-1-1">
               </div>
               <div class="col-1-2">
-                <label>Reload Interval</label>
-                <el-slider v-model="ReloadInt" :min="300" :max="5000" :step="100" :format-tooltip="formatInt" @change="changeSwitch()"></el-slider>
+                <label>Reload Interval is {{ ReloadInt }} msec</label>
+                <el-slider v-model="ReloadInt" :min="300" :max="5000" :step="100" :format-tooltip="formatInt"  @change="changeSwitch()"></el-slider>
               </div>
               <div class="col-1-2">
-                <label>Reload time</label>
-                <el-slider v-model="LoadRange" :min="1" :max="15" :format-tooltip="formatRange"></el-slider>
+                <label>Reload last {{ LoadRange }} minutes (limit 50,000 logs)</label>
+                <el-slider v-model="LoadRange" :min="1" :max="15" :format-tooltip="formatRange"  @change="changeSwitch()"></el-slider>
               </div>
             </div>
             <h3 class="title-grey">Active Dead Ratio</h3>
@@ -255,49 +255,40 @@
             </div>
               <el-tabs v-model="LogActive"  type="card">
                 <el-tab-pane label="Ping" name="Ping">
-                  <div>
-                    <h3 class="title-grey">PingLog Viewer</h3>
-                    <label>Monitor</label>
-                    <el-switch
-                      v-model="MongoSwitchPing"
-                      active-text="On"
-                      inactive-text="Off"
-                      @change="changeSwitch()"
-                    >
-                    </el-switch>
-                    <br>
-                    <div class="slider">
-                     <label>LogLimit</label>
-                     <el-slider class="slider-70" v-model="logLimit" :max="5000" :min="1" :step="1" @change="changeSwitch()"></el-slider> <br>
-                    </div>
-                    <div class="slider">
-                      <label>Reload Interval msec</label>
-                      <el-slider class="slider-70" v-model="interval" :max="10000" :min="100" :step="100" @change="changeSwitch()"></el-slider> <br>
-                    </div>
-                    <el-input-number v-model="logStaticLimit" :step=10></el-input-number>
-                    <el-button @click="ReloadLogArea" type="success" class="button">Reload</el-button>
-                  </div>
+                  <h3 class="title-grey">PingLog Viewer</h3>
                   <section class="filter">
                     <h3 class="title-grey">Filter Logs</h3>
-                    <div class="filter-input">
-                      <label>Source</label>
-                      <el-input placeholder="Source" prefix-icon="el-icon-search" v-model="filterLogsSource"></el-input>
-                    </div>
-                    <div class="filter-input">
-                      <label>Destnation</label>
-                      <el-input placeholder="Destnation" prefix-icon="el-icon-search" v-model="filterLogsDestnation"></el-input>
-                    </div>
-                    <div class="filter-input">
-                      <label>Alive</label>
-                      <el-input placeholder="Alive" prefix-icon="el-icon-search" v-model="filterLogsAlive"></el-input>
-                    </div>
-                    <div class="filter-input">
-                      <label>Timestamp</label>
-                      <el-input placeholder="Timestamp" prefix-icon="el-icon-search" v-model="filterLogsTime"></el-input>
-                    </div>
-                    <div class="filter-input">
-                      <label>Messages</label>
-                      <el-input placeholder="Messages" prefix-icon="el-icon-search" v-model="filterLogsMessage"></el-input>
+                    <div class="grid grid-pad">
+                      <div class="col-1-5">
+                        <div class="filter-input">
+                          <label>Source</label>
+                          <el-input placeholder="Source" prefix-icon="el-icon-search" v-model="filterLogsSource"></el-input>
+                        </div>
+                      </div>
+                      <div class="col-1-5">
+                        <div class="filter-input">
+                          <label>Destnation</label>
+                          <el-input placeholder="Destnation" prefix-icon="el-icon-search" v-model="filterLogsDestnation"></el-input>
+                        </div>
+                      </div>
+                      <div class="col-1-5">
+                        <div class="filter-input">
+                          <label>Alive</label>
+                          <el-input placeholder="Alive" prefix-icon="el-icon-search" v-model="filterLogsAlive"></el-input>
+                        </div>
+                      </div>
+                      <div class="col-1-5">
+                        <div class="filter-input">
+                          <label>Timestamp</label>
+                          <el-input placeholder="Timestamp" prefix-icon="el-icon-search" v-model="filterLogsTime"></el-input>
+                        </div>
+                      </div>
+                      <div class="col-1-5">
+                        <div class="filter-input">
+                          <label>Messages</label>
+                          <el-input placeholder="Messages" prefix-icon="el-icon-search" v-model="filterLogsMessage"></el-input>
+                        </div>
+                      </div>
                     </div>
                   </section>
                   <br>
@@ -364,12 +355,6 @@
                 </el-tab-pane>
                 <el-tab-pane label="Traceroute" name="Traceroute">
                   <h3 class="title-grey">Traceroute Viewer</h3>
-                  <label>RealTime Monitor</label>
-                  <el-switch
-                    v-model="MongoSwitchTraceroute"
-                    active-text="On"
-                    inactive-text="Off"
-                    @change="changeSwitchTraceroute">
                   </el-switch>
                 </el-tab-pane>
                 <el-tab-pane label="Syslog" name="Syslog">
