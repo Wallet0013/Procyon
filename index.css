@@ -98,19 +98,20 @@ html,body{
 	/*background: linear-gradient(#fff, #f4f4fd);*/
 }
 
-
 .slider-70 {
 	width: 70%;
 	display: inline-block;
 }
 
-
+.button-full{
+	width: 100%;
+}
+.button-height-5row{
+	height: 117px;
+}
 
 .resolve{
 	margin-bottom: 15px;
-}
-.resolve-text{
-	margin: 5px 0 ;
 }
 
 label{
@@ -152,7 +153,6 @@ form.container-from > div.el-form-item > label.el-form-item__label{
 	padding-bottom: 2px !important;
 }
 
-.pingOption-input{ width: 80px !important; }
 
 /*form.app-form{
 	width: 50%;

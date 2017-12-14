@@ -37,7 +37,6 @@ export const timeRange = new Vue({
     getAllpingCnt() {
       return new Promise(function (resolve,reject){
         co(function* () {
-          console.log("blur called");
           const cnt = yield mongo.getAllPingCollectionCnt();
           resolve(timeRange.PingCnt = cnt);
         });

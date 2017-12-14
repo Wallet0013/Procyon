@@ -279,17 +279,6 @@ export const realtimeDashboard = new Vue ({
 
 export const pieChart = chart.init(document.getElementById('realtime')); // 表示する場所のID
 
-// const startTime = 1511757805295;
-
-// realtimeDashboard.alivedeadratioData = [
-//     {name: "alive"  , value: [0, 1511757805295, 1511757867942, 9440], itemStyle: alive_style },
-//     {name: "dead"   , value: [0, 1511757867942, 1511757883206, 7977], itemStyle: dead_style},
-//     {name: "alive"  , value: [0, 1511757883206, 1511757893161, 5092], itemStyle: alive_style},
-//     {name: "alive"  , value: [1, 1511757805295, 1511757893161, 3000], itemStyle: alive_style},
-//     {name: "dead"   , value: [2, 1511757805295, 1511757867942, 4742], itemStyle: dead_style},
-//     {name: "alive"  , value: [2, 1511757867942, 1511757893161, 870 ], itemStyle: alive_style},
-// ]
-
 
 function renderItem(params, api) {
     var categoryIndex = api.value(0);
@@ -320,10 +309,10 @@ export let option = {
         show : true,
         feature : {
             // mark : {show: true},
-            dataZoom : {show: true,title:{zoom:"zoom"}},
+            dataZoom : {show: true,title:{zoom:"zoom",back:"back"}},
             // dataView : {show: true},
             // magicType : {show: true, type: ['line', 'bar']},
-            // restore : {show: true},
+            restore : {show: true,title:"restore"},
             saveAsImage : {show: true,title:"Save as Image"}
         }
     },

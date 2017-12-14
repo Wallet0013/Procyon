@@ -118,20 +118,31 @@
             <el-button type="danger" @click="flushArptable()">Flush ArpTable</el-button>
             <hr>
             <h3 class="title-grey">Ping Options</h3>
-            <el-form :inline="true" :model="reqConf">
-              <el-form-item label="Timeout">
-                <el-input class="pingOption-input" v-model="reqConf.timeout" placeholder="1000 (msec)" size="small" ></el-input>
-              </el-form-item>
-              <el-form-item label="Interval">
-                <el-input class="pingOption-input" v-model="reqConf.interval" placeholder="1000 (msec)" size="small"></el-input>
-              </el-form-item>
-              <el-form-item label="PacketSize">
-                <el-input class="pingOption-input" v-model="reqConf.packetsize" placeholder="54" size="small"></el-input>
-              </el-form-item>
-              <el-form-item label="Hop">
-                <el-input class="pingOption-input" v-model="reqConf.hop" placeholder="10" size="small"></el-input>
-              </el-form-item>
-            </el-form>
+            <div class="grid grid-pad">
+              <el-form :model="reqConf">
+                <div class="col-1-4">
+                  <el-form-item label="Timeout">
+                    <el-input v-model="reqConf.timeout" placeholder="1000 (msec)" size="small" ></el-input>
+                  </el-form-item>
+                </div>
+                <div class="col-1-4">
+                  <el-form-item label="Interval">
+                    <el-input v-model="reqConf.interval" placeholder="1000 (msec)" size="small"></el-input>
+                  </el-form-item>
+                </div>
+                <div class="col-1-4">
+                  <el-form-item label="PacketSize">
+                    <el-input v-model="reqConf.packetsize" placeholder="54" size="small"></el-input>
+                  </el-form-item>
+                </div>
+                <div class="col-1-4">
+                  <el-form-item label="Hop">
+                    <el-input v-model="reqConf.hop" placeholder="10" size="small"></el-input>
+                  </el-form-item>
+                </div>
+              </el-form>
+            </div>
+
           </div>
           <el-row id="ResultArea" v-show="displayResultArea">
             <h3 class="title-grey">App Client List</h3>
@@ -194,6 +205,9 @@
             </div>
             <h3 class="title-grey">Active Dead Ratio</h3>
             <div id="realtime" v-bind:style="{ height: adHeight + 100 +'px' }"></div>
+            <h3 class="title-grey">Ping snap</h3>
+            <h3 class="title-grey">Traceroute snap</h3>
+            <h3 class="title-grey">Syslog snap</h3>
           </div>
 
           <div id="timeRange" v-show="displaytimeRange">
@@ -203,7 +217,8 @@
               description="The Analytics is analyze ping,traceroute,syslog logs. You set range logs at first. So you appear visualize graph. Next you set"
               show-icon>
             </el-alert>
-            <h2 class="title-grey">TimeRange</h2>
+            <h2 class="title-grey">Analytics</h2>
+            <h3 class="title-grey">TimeRange</h3>
             <el-date-picker
               v-model="limitTimeRangeDate"
               type="date"
@@ -224,10 +239,8 @@
             <h3> {{ PingCnt }}</h3>
           </div>
           <div id="LogArea" v-show="displayLogArea">
-
-            <h2 class="title-grey">Analytics</h2>
             <div class="resolve">
-              <label>Resolve Name</label>
+              <h3 class="title-grey">Resolve Name</h3>
               <el-popover
                 ref="recordtable"
                 placement="right"
@@ -239,23 +252,32 @@
                 </el-table>
               </el-popover>
               <el-button @click="checkRecord()" v-popover:recordtable type="success" size="small" round>CheckReg</el-button>
-              <el-input
-                class="resolve-text"
-                type="textarea"
-                autosize
-                :autosize="{ minRows: 4}"
-                placeholder="Please Paste hosts like blew example. if you regist duplicate ip address, the recode will overwrite it.
-                --------------------
-                192.168.1.1 kyotenGW
-                10.10.10.10 gaisetsu1"
-                v-model="hosts">
-              </el-input>
-              <el-button @click="registRecord()" type="primary" >Regist</el-button>
-              <el-button @click="resetRecord()" type="danger" >UnRegist</el-button>
+              <div class="grid grid-pad">
+                <div class="col-8-12">
+                  <el-input
+                    class="resolve-text"
+                    type="textarea"
+                    autosize
+                    :autosize="{ minRows: 5}"
+                    placeholder="Please Paste hosts like blew example. if you regist duplicate ip address, the recode will overwrite it.
+                    --------------------
+                    192.168.1.1 kyotenGW
+                    10.10.10.10 gaisetsu1"
+                    v-model="hosts">
+                  </el-input>
+                </div>
+                <div class="col-2-12">
+                  <el-button class="button-full button-height-5row" @click="registRecord()" type="primary" plain>Regist</el-button>
+                </div>
+                <div class="col-2-12">
+                  <el-button class="button-full button-height-5row" @click="resetRecord()" type="danger" plain>UnRegist</el-button>
+                </div>
+              </div>
             </div>
+            <div class="AnalyticsViewer">
+              <h3 class="title-grey">Viewer</h3>
               <el-tabs v-model="LogActive"  type="card">
                 <el-tab-pane label="Ping" name="Ping">
-                  <h3 class="title-grey">PingLog Viewer</h3>
                   <section class="filter">
                     <h3 class="title-grey">Filter Logs</h3>
                     <div class="grid grid-pad">
@@ -354,18 +376,64 @@
                   </el-table>
                 </el-tab-pane>
                 <el-tab-pane label="Traceroute" name="Traceroute">
-                  <h3 class="title-grey">Traceroute Viewer</h3>
-                  </el-switch>
                 </el-tab-pane>
                 <el-tab-pane label="Syslog" name="Syslog">
-                  <h3 class="title-grey"> Syslog Viewer</h3>
-                  <label>RealTime Monitor</label>
-                  <el-switch
-                    v-model="MongoSwitchSyslog"
-                    active-text="On"
-                    inactive-text="Off"
-                    @change="changeSwitchSyslog">
-                  </el-switch>
+                  <div class="grid grid-pad">
+                    <div class="col-1-5">
+                      <div class="filter-input">
+                        <label>Facility</label>
+                        <el-input placeholder="Source" prefix-icon="el-icon-search" v-model="filterLogsSource"></el-input>
+                      </div>
+                    </div>
+                    <div class="col-1-5">
+                      <div class="filter-input">
+                        <label>Severity</label>
+                        <el-input placeholder="Destnation" prefix-icon="el-icon-search" v-model="filterLogsDestnation"></el-input>
+                      </div>
+                    </div>
+                    <div class="col-1-7">
+                      <div class="filter-input">
+                        <label>Tag</label>
+                        <el-input placeholder="Alive" prefix-icon="el-icon-search" v-model="filterLogsAlive"></el-input>
+                      </div>
+                    </div>
+                    <div class="col-1-7">
+                      <div class="filter-input">
+                        <label>Timestamp</label>
+                        <el-input placeholder="Timestamp" prefix-icon="el-icon-search" v-model="filterLogsTime"></el-input>
+                      </div>
+                    </div>
+                    <div class="col-1-7">
+                      <div class="filter-input">
+                        <label>Hostname</label>
+                        <el-input placeholder="Messages" prefix-icon="el-icon-search" v-model="filterLogsMessage"></el-input>
+                      </div>
+                    </div>
+                    <div class="col-1-7">
+                      <div class="filter-input">
+                        <label>Address</label>
+                        <el-input placeholder="Messages" prefix-icon="el-icon-search" v-model="filterLogsMessage"></el-input>
+                      </div>
+                    </div>
+                    <div class="col-1-7">
+                      <div class="filter-input">
+                        <label>Port</label>
+                        <el-input placeholder="Messages" prefix-icon="el-icon-search" v-model="filterLogsMessage"></el-input>
+                      </div>
+                    </div>
+                    <div class="col-1-7">
+                      <div class="filter-input">
+                        <label>Size</label>
+                        <el-input placeholder="Messages" prefix-icon="el-icon-search" v-model="filterLogsMessage"></el-input>
+                      </div>
+                    </div>
+                    <div class="col-1-7">
+                      <div class="filter-input">
+                        <label>Message</label>
+                        <el-input placeholder="Messages" prefix-icon="el-icon-search" v-model="filterLogsMessage"></el-input>
+                      </div>
+                    </div>
+                  </div>
                   <el-table
                     :data="tableSyslogData"
                     border
@@ -421,6 +489,7 @@
                   </el-table>
                 </el-tab-pane>
               </el-tabs>
+            </div>
           </div>
         </div>
       </div>
