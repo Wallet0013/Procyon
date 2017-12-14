@@ -1,3 +1,5 @@
+
+
 ## Procyon
 Procyon is network utilities tools for network infrastracture enginner
 
@@ -60,8 +62,8 @@ Procyon-Node-Mongo
 
 
 ### Caution
-端末のvboxnet0が書き換わります。
-this is use two ipaddr
+Procyon overwite [vboxnet0]
+Procyon is use two ipaddr
 use 200.200.x.x/16 for management. So this segment isn't use a test.
 
 
