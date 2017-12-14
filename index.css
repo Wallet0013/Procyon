@@ -51,6 +51,14 @@ html,body{
 }
 /* ---------------------- */
 
+
+.brand{
+	display: block;
+	margin-left: auto;
+	margin-right: auto;
+	height: 7em;
+	/*width: 20em;*/
+}
 .progress{
 	margin-top:1em;
 }
