@@ -241,6 +241,25 @@
           <div id="LogArea" v-show="displayLogArea">
             <div class="resolve">
               <h3 class="title-grey">Resolve Name</h3>
+              <el-button type="primary" size="mini" @click="resolveDialogVisible = true" round>Resoleve Name Registration</el-button>
+              <el-dialog
+                title="ResolveName Resigtration"
+                :visible.sync="resolveDialogVisible"
+                width="60%">
+                <span>Please Paste hosts like blew example. if you regist duplicate ip address, the recode will overwrite it</span>
+                <el-input
+                  class="resolve-text"
+                  type="textarea"
+                  autosize
+                  :autosize="{ minRows: 5}"
+                  placeholder="192.168.1.1 kyotenGW"
+                  v-model="hosts">
+                </el-input>
+                <span slot="footer" class="dialog-footer">
+                  <el-button  @click="registRecord()" type="primary" plain>Regist</el-button>
+                  <el-button  @click="resetRecord()" type="danger" plain>UnRegist</el-button>
+                </span>
+              </el-dialog>
               <el-popover
                 ref="recordtable"
                 placement="right"
@@ -251,28 +270,7 @@
                   <el-table-column width="250" property="name" label="Name"></el-table-column>
                 </el-table>
               </el-popover>
-              <el-button @click="checkRecord()" v-popover:recordtable type="success" size="small" round>CheckReg</el-button>
-              <div class="grid grid-pad">
-                <div class="col-8-12">
-                  <el-input
-                    class="resolve-text"
-                    type="textarea"
-                    autosize
-                    :autosize="{ minRows: 5}"
-                    placeholder="Please Paste hosts like blew example. if you regist duplicate ip address, the recode will overwrite it.
-                    --------------------
-                    192.168.1.1 kyotenGW
-                    10.10.10.10 gaisetsu1"
-                    v-model="hosts">
-                  </el-input>
-                </div>
-                <div class="col-2-12">
-                  <el-button class="button-full button-height-5row" @click="registRecord()" type="primary" plain>Regist</el-button>
-                </div>
-                <div class="col-2-12">
-                  <el-button class="button-full button-height-5row" @click="resetRecord()" type="danger" plain>UnRegist</el-button>
-                </div>
-              </div>
+              <el-button @click="checkRecord()" v-popover:recordtable type="success" size="mini" round>CheckReg</el-button>
             </div>
             <div class="AnalyticsViewer">
               <h3 class="title-grey">Viewer</h3>

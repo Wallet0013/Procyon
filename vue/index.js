@@ -403,6 +403,7 @@ const LogArea = new Vue({
       filterLogsTime:"",
       filterLogsTimedate:"",
       filterLogsTimetime:"",
+      resolveDialogVisible:false,
       sourceFLG:0,
       destFLG:0,
       aliveFLG:0,
