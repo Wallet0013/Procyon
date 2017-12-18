@@ -1,8 +1,6 @@
 import co             from "co";
 import moment         from "moment";
-import axios          from "axios";
 import _              from "lodash";
-import ipaddr         from "ip";
 
 // element ui
 import Vue      from 'vue'
@@ -13,7 +11,6 @@ import 'element-ui/lib/theme-chalk/index.css'
 Vue.use(ElementUI, {locale});
 
 import mongo            from "../util/mongo";        // load mongo util about model
-import procyon_node     from "../util/procyon-node"; // load vagrant util
 import { messageArea }  from "../util/message";
 
 
@@ -317,6 +314,3 @@ const ResultArea = new Vue ({
     }
   }
 })
-
-
-export {nodeAdd,containerTable,ResultArea};
