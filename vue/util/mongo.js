@@ -70,7 +70,6 @@ module.exports = {
 
 		});
 	},
-
 	getPingCollection : function getPingCollection(limit,QueryParam) {
 		return new Promise(function (resolve,reject){
 			co(function* () {
@@ -80,6 +79,39 @@ module.exports = {
 					if (QueryParam == undefined){
 						QueryParam = {};
 					}
+					console.log(JSON.stringify([
+						{$match:QueryParam},
+						{$sort:{timestamp: -1}},
+						{$lookup:
+					    	{
+					        	from:"resolve",
+					        	localField:"source",
+					        	foreignField:"ip",
+					        	as:"source_resolve"
+					    	}
+						},
+						{$unwind:
+							{
+				            	path:"$source_resolve",
+				            	preserveNullAndEmptyArrays: true
+			        		}
+				        },
+						{$lookup:
+					    	{
+					        	from:"resolve",
+					        	localField:"destnation",
+					        	foreignField:"ip",
+					        	as:"destnation_resolve"
+					    	}
+						},
+						{$unwind:
+							{
+				            	path:"$destnation_resolve",
+				            	preserveNullAndEmptyArrays: true
+			        		}
+				        },
+						{$limit: limit}
+					]));
 					let logs =  db.collection("ping").aggregate([
 						{$match:QueryParam},
 						{$sort:{timestamp: -1}},
@@ -108,6 +140,106 @@ module.exports = {
 						{$unwind:
 							{
 				            	path:"$destnation_resolve",
+				            	preserveNullAndEmptyArrays: true
+			        		}
+				        },
+						{$limit: limit}
+					],{ allowDiskUse: true },function(err, result) {
+						if (err){
+							db.close();
+							reject(err);
+							console.log(err);
+						}
+						db.close();
+						resolve(result);
+						// console.log("result",result);
+					});
+					// db.close();
+					// resolve(pinglog);
+				}catch(e){
+					console.log("error : " + e);
+					reject(127);
+				}
+
+			}).catch(function(err){
+				process.on('unhandledRejection', console.log(err));
+			});
+
+		});
+	},
+	getTraceCollection : function getPingCollection(limit,QueryParam) {
+		return new Promise(function (resolve,reject){
+			co(function* () {
+				try{
+					db = yield MongoClient.connect(url);
+					let pinglog;
+					if (QueryParam == undefined){
+						QueryParam = {};
+					}
+					let logs =  db.collection("traceroute").aggregate([
+						{$match:QueryParam},
+						{$sort:{timestamp: -1}},
+						{$lookup:
+					    	{
+					        	from:"resolve",
+					        	localField:"address",
+					        	foreignField:"ip",
+					        	as:"source_resolve"
+					    	}
+						},
+						{$unwind:
+							{
+				            	path:"$address_resolve",
+				            	preserveNullAndEmptyArrays: true
+			        		}
+				        },
+						{$limit: limit}
+					],{ allowDiskUse: true },function(err, result) {
+						if (err){
+							db.close();
+							reject(err);
+							console.log(err);
+						}
+						db.close();
+						resolve(result);
+						// console.log("result",result);
+					});
+					// db.close();
+					// resolve(pinglog);
+				}catch(e){
+					console.log("error : " + e);
+					reject(127);
+				}
+
+			}).catch(function(err){
+				process.on('unhandledRejection', console.log(err));
+			});
+
+		});
+	},
+	getSyslogCollection : function getPingCollection(limit,QueryParam) {
+		return new Promise(function (resolve,reject){
+			co(function* () {
+				try{
+					db = yield MongoClient.connect(url);
+					let pinglog;
+					if (QueryParam == undefined){
+						QueryParam = {};
+					}
+					let logs =  db.collection("syslog").aggregate([
+						{$match:QueryParam},
+						{$sort:{timestamp: -1}},
+						{$lookup:
+					    	{
+					        	from:"resolve",
+					        	localField:"address",
+					        	foreignField:"ip",
+					        	as:"source_resolve"
+					    	}
+						},
+						{$unwind:
+							{
+				            	path:"$address_resolve",
 				            	preserveNullAndEmptyArrays: true
 			        		}
 				        },

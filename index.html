@@ -219,6 +219,10 @@
             </el-alert>
             <h2 class="title-grey">Analytics</h2>
             <h3 class="title-grey">TimeRange</h3>
+            <section>
+              <el-button @click="setTimeYesterday()" type="primary" class="button" size="mini" plain>yesterday</el-button>
+              <el-button @click="setTimeDayTime()" type="primary" class="button" size="mini" plain>day time</el-button>
+            </section>
             <el-date-picker
               v-model="limitTimeRangeDate"
               type="date"
@@ -235,45 +239,46 @@
               @change="getAllpingCnt()"
               >
             </el-time-picker>
-            <el-button @click="getAllPing()" type="primary" class="button">Reload</el-button>
-            <h3> {{ PingCnt }}</h3>
+            <el-button @click="getAllData()" type="primary" class="button">Load Data</el-button>
+            <div class="timelineArea"></div>
+            <h3 class="title-grey"> Ping log count : {{ PingCnt }}</h3>
           </div>
           <div id="LogArea" v-show="displayLogArea">
-            <div class="resolve">
-              <h3 class="title-grey">Resolve Name</h3>
-              <el-button type="primary" size="mini" @click="resolveDialogVisible = true" round>Resoleve Name Registration</el-button>
-              <el-dialog
-                title="ResolveName Resigtration"
-                :visible.sync="resolveDialogVisible"
-                width="60%">
-                <span>Please Paste hosts like blew example. if you regist duplicate ip address, the recode will overwrite it</span>
-                <el-input
-                  class="resolve-text"
-                  type="textarea"
-                  autosize
-                  :autosize="{ minRows: 5}"
-                  placeholder="192.168.1.1 kyotenGW"
-                  v-model="hosts">
-                </el-input>
-                <span slot="footer" class="dialog-footer">
-                  <el-button  @click="registRecord()" type="primary" plain>Regist</el-button>
-                  <el-button  @click="resetRecord()" type="danger" plain>UnRegist</el-button>
-                </span>
-              </el-dialog>
-              <el-popover
-                ref="recordtable"
-                placement="right"
-                width="400"
-                trigger="click">
-                <el-table :data="recordData">
-                  <el-table-column width="150" property="ip" label="IP"></el-table-column>
-                  <el-table-column width="250" property="name" label="Name"></el-table-column>
-                </el-table>
-              </el-popover>
-              <el-button @click="checkRecord()" v-popover:recordtable type="success" size="mini" round>CheckReg</el-button>
-            </div>
+
             <div class="AnalyticsViewer">
               <h3 class="title-grey">Viewer</h3>
+              <div class="resolve">
+                <el-button type="primary" size="mini" @click="resolveDialogVisible = true" plain>Resoleve Name Registration</el-button>
+                <el-dialog
+                  title="ResolveName Resigtration"
+                  :visible.sync="resolveDialogVisible"
+                  width="60%">
+                  <span>Please Paste hosts like blew example. if you regist duplicate ip address, the recode will overwrite it</span>
+                  <el-input
+                    class="resolve-text"
+                    type="textarea"
+                    autosize
+                    :autosize="{ minRows: 5}"
+                    placeholder="192.168.1.1 kyotenGW"
+                    v-model="hosts">
+                  </el-input>
+                  <span slot="footer" class="dialog-footer">
+                    <el-button  @click="registRecord()" type="primary" plain>Regist</el-button>
+                    <el-button  @click="resetRecord()" type="danger" plain>UnRegist</el-button>
+                  </span>
+                </el-dialog>
+                <el-popover
+                  ref="recordtable"
+                  placement="right"
+                  width="400"
+                  trigger="click">
+                  <el-table :data="recordData">
+                    <el-table-column width="150" property="ip" label="IP"></el-table-column>
+                    <el-table-column width="250" property="name" label="Name"></el-table-column>
+                  </el-table>
+                </el-popover>
+                <el-button @click="checkRecord()" v-popover:recordtable type="success" size="mini" plain>CheckReg</el-button>
+              </div>
               <el-tabs v-model="LogActive"  type="card">
                 <el-tab-pane label="Ping" name="Ping">
                   <section class="filter">

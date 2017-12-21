@@ -16,6 +16,30 @@ import mongo            from "../util/mongo";        // load mongo util about mo
 import procyon_node     from "../util/procyon-node"; // load vagrant util
 import { messageArea }  from "../util/message";
 
+axios.defaults.timeout = 1000;
+function checkAppStatus(target){
+  return new Promise(function (resolve,reject){
+    co(function* () {
+      const uri = "http://" + target + ":50001/test";
+      // console.log("target : " + uri);
+      axios.get(uri)
+      .then(res => {
+        this.sending = false;
+        console.log("success check app status");
+        return 0;
+      })
+      .catch(error => {
+        this.sending = false
+        console.log("failed check app status");
+        throw error
+      })
+    });
+  }).catch(function(err){
+    process.on('unhandledRejection', console.log(err));
+  });
+}
+
+
 
 const nodeAdd = new Vue ({
   el: "#nodeAdd",

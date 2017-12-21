@@ -13,8 +13,8 @@ import procyon_node         from "../util/procyon-node";
 import {nodeAdd,containerTable,ResultArea}          from "../lib/lib-app";
 import {messageArea}        from "../util/message";
 import {nodeTool}           from "../lib/lib-node";
-import {timeRange}          from "../lib/lib-timeRange";
-import {LogArea}            from "../index";
+import {timeRange,LogArea}          from "../lib/lib-analytics";
+// import {LogArea}            from "../index";
 import {realtimeDashboard}  from "../lib/lib-realtime.js";
 
 // element ui

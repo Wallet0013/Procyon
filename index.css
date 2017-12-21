@@ -122,6 +122,10 @@ html,body{
 	margin-bottom: 15px;
 }
 
+.timelineArea{
+	margin-top: 10px;
+}
+
 label{
 	color:#5a5e66
 }
