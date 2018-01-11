@@ -79,39 +79,6 @@ module.exports = {
 					if (QueryParam == undefined){
 						QueryParam = {};
 					}
-					console.log(JSON.stringify([
-						{$match:QueryParam},
-						{$sort:{timestamp: -1}},
-						{$lookup:
-					    	{
-					        	from:"resolve",
-					        	localField:"source",
-					        	foreignField:"ip",
-					        	as:"source_resolve"
-					    	}
-						},
-						{$unwind:
-							{
-				            	path:"$source_resolve",
-				            	preserveNullAndEmptyArrays: true
-			        		}
-				        },
-						{$lookup:
-					    	{
-					        	from:"resolve",
-					        	localField:"destnation",
-					        	foreignField:"ip",
-					        	as:"destnation_resolve"
-					    	}
-						},
-						{$unwind:
-							{
-				            	path:"$destnation_resolve",
-				            	preserveNullAndEmptyArrays: true
-			        		}
-				        },
-						{$limit: limit}
-					]));
 					let logs =  db.collection("ping").aggregate([
 						{$match:QueryParam},
 						{$sort:{timestamp: -1}},

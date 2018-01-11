@@ -39,8 +39,6 @@ function checkAppStatus(target){
   });
 }
 
-
-
 const nodeAdd = new Vue ({
   el: "#nodeAdd",
   data() {

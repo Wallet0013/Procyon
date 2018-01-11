@@ -8,6 +8,7 @@ import BigNumber      from "bignumber.js";
 import Papa           from "papaparse";
 import _              from "lodash";
 import Dygraph        from "dygraphs";
+import chart          from 'echarts';
 
 // load Model util
 import mongo          from "../util/mongo";
@@ -22,6 +23,56 @@ import locale       from 'element-ui/lib/locale/lang/ja'
 import 'element-ui/lib/theme-chalk/index.css'
 Vue.use(ElementUI, {locale});
 
+
+const pingGraph = chart.init(document.getElementById('pingGraph'));
+const traceGraph = chart.init(document.getElementById('traceGraph'));
+const syslogGraph = chart.init(document.getElementById('syslogGraph'));
+
+const pingGraphoption = {
+    tooltip: {
+        trigger: 'item',
+        formatter: "{a} <br/>{b}: {c} ({d}%)"
+    },
+    legend: {
+        orient: 'vertical',
+        x: 'left',
+        data:['直接访问','邮件营销','联盟广告','视频广告','搜索引擎']
+    },
+    series: [
+        {
+            name:'访问来源',
+            type:'pie',
+            radius: ['50%', '70%'],
+            avoidLabelOverlap: false,
+            label: {
+                normal: {
+                    show: false,
+                    position: 'center'
+                },
+                emphasis: {
+                    show: true,
+                    textStyle: {
+                        fontSize: '30',
+                        fontWeight: 'bold'
+                    }
+                }
+            },
+            labelLine: {
+                normal: {
+                    show: false
+                }
+            },
+            data:[
+                {value:335, name:'直接访问'},
+                {value:310, name:'邮件营销'},
+                {value:234, name:'联盟广告'},
+                {value:135, name:'视频广告'},
+                {value:1548, name:'搜索引擎'}
+            ]
+        }
+    ]
+};
+
 const timeRange = new Vue({
   el:"#timeRange",
   data (){
@@ -30,7 +81,9 @@ const timeRange = new Vue({
       PingLogsData:"",
       limitTimeRangeDate:new Date(),
       limitTimeRangeTime:[moment(new Date()).subtract(1,"hours").toDate(),new Date()],
-      PingCnt:""
+      PingCnt:"",
+      TraceCnt:"",
+      SyslogCnt:"",
     }
   },
   methods : {
@@ -51,6 +104,27 @@ const timeRange = new Vue({
       });
     },
     analyzePinglog(data) {
+      return new Promise(function (resolve,reject){
+        co(function* () {
+          // console.log("data",data);
+
+          let aliveCnt = 0;
+          let deadCnt = 0;
+          for(let d of data){
+            if(d.alive == true){
+              aliveCnt++;
+            }
+            if(d.alive == false){
+              deadCnt++;
+            }
+          }
+          resolve([aliveCnt,deadCnt]);
+        });
+      }).catch(function(err){
+        process.on('unhandledRejection', console.log(err));
+      });
+    },
+    figurePingGraph(data) {
       return new Promise(function (resolve,reject){
         co(function* () {
           // console.log("data",data);
@@ -98,13 +172,13 @@ const timeRange = new Vue({
           });
 
           const query  = { "timestamp" : { "$gte" : Number(moment(startTime).format('x')), "$lte" : Number(moment(endTime).format('x')) }};
-
           const limit = 500000;
 
           const pLog = yield mongo.getPingCollection(limit,query);
           const tLog = yield mongo.getTraceCollection(limit,query);
           const sLog = yield mongo.getSyslogCollection(limit,query)
 
+          // transform pLog for dygraph data
           let logData = new Array();
           for(let data of pLog){
             logData.push([
@@ -112,15 +186,14 @@ const timeRange = new Vue({
               new BigNumber(data.microsec).div(1000).round().toNumber()
             ]);
           }
-
           let asclogData = new Array();
           for(let data of logData){
             asclogData.unshift(data);
           }
-          // console.log("logData",logData);
 
+          /////
+          // dygraph
           const area = document.getElementsByClassName('timelineArea');
-
           const curretWidth = (document.body.clientWidth - 500);
           const option = {
             labels: [ "TimeStamp", "RTT(ms)" ],
@@ -134,19 +207,31 @@ const timeRange = new Vue({
                 // console.log("yRanges",yRanges);
 
                 const pLog = yield mongo.getPingCollection(limit,query);
+                const tLog = yield mongo.getTraceCollection(limit,query);
+                const sLog = yield mongo.getSyslogCollection(limit,query)
                 timeRange.PingCnt = pLog.length;
+                timeRange.TraceCnt = tLog.length;
+                timeRange.SyslogCnt = sLog.length;
 
-                console.log("cnd",yield timeRange.analyzePinglog(pLog));
+                const adratio = yield timeRange.analyzePinglog(pLog);
 
-
+                pingGraph.setOption(pingGraphoption);
+                console.log("alive",adratio[0]);
+                console.log("dead",adratio[1]);
 
               }).catch(function(err){
                 process.on('unhandledRejection', console.log(err));
               });
             }
           };
+          // print
           const g = new Dygraph(area[0], asclogData , option);
-          timeRange.getAllpingCnt();
+
+          pingGraph.setOption(pingGraphoption);
+
+          timeRange.PingCnt = pLog.length;
+          timeRange.TraceCnt = tLog.length;
+          timeRange.SyslogCnt = sLog.length;
         });
       }).catch(function(err){
         process.on('unhandledRejection', console.log(err));

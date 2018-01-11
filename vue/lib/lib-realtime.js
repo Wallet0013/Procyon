@@ -277,7 +277,7 @@ export const realtimeDashboard = new Vue ({
 
 });
 
-export const pieChart = chart.init(document.getElementById('realtime')); // 表示する場所のID
+const pieChart = chart.init(document.getElementById('realtime')); // 表示する場所のID
 
 
 function renderItem(params, api) {
@@ -304,7 +304,7 @@ function renderItem(params, api) {
 }
 
 
-export let option = {
+let option = {
     toolbox: {
         show : true,
         feature : {
@@ -334,10 +334,6 @@ export let option = {
                 opacity: 1
             }
         }
-    },
-    title: {
-        text: 'Alive Dead Ratio',
-        left: 'center'
     },
     legend: {
         data: ['bar', 'error']
